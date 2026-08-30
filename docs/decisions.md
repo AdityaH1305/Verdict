@@ -252,10 +252,180 @@ a spike near 0 (`hard_decline`, genuinely unrecoverable) and a broad mass around
 not at the round numbers guessed before any data existed. Retune and record the
 final values here.
 
+## Day 3 — threshold tuning (closes the Day 2 handoff)
+
+Cutoffs derived from Model 2's measured, calibrated score distribution on the
+1,396 non-fraud test rows. The distribution is bimodal:
+
+| Band | Rows | What lives there |
+|---|---|---|
+| 0.00–0.10 | 475 | `hard_decline` — observed recovery **0.043** |
+| **0.15–0.30** | **48** | **the valley — genuinely sparse** |
+| 0.35–0.60 | 763 | `soft_decline` (~0.50) + `customer_dropoff` (~0.41) |
+
+**`HIGH = 0.50`** (was 0.6). Reads as *"recovery is more likely than not, so just
+retry it"* — a defensible line on its own terms rather than a round number, and
+it lands on the `soft_decline` median (0.495). Of the cutoffs evaluated it gave
+the **highest observed recovery inside the auto-retry bucket (0.610)**:
+
+| Cutoff | Share auto-retried | Observed recovery in bucket |
+|---|---|---|
+| 0.60 | 1.6% | 0.538 |
+| 0.55 | 5.7% | 0.560 |
+| **0.50** | **15.1%** | **0.610** |
+| 0.45 | 30.0% | 0.552 |
+
+**`LOW = 0.25`** (was 0.3). The valley floor. Below it is the unrecoverable mode;
+above it, everything worth acting on. Beats 0.30 on both counts: 26 vs 30
+recoverable transactions stranded, and 15 vs 27 pointless escalations.
+
+Final rule:
+
+```
+fraud_block                        -> no_action        (hard rule, no threshold)
+p >= 0.50                          -> auto_retry_now
+0.25 <= p < 0.50, customer_dropoff -> customer_nudge
+0.25 <= p < 0.50, otherwise        -> retry_later      (with backoff)
+p <  0.25, hard_decline            -> no_action        (nothing to escalate)
+p <  0.25, otherwise               -> escalate
+```
+
+Two judgement calls encoded there. The mid band splits on **category, not
+probability**: the same odds mean different things depending on whether a bank
+refused or a human walked away — one wants another attempt, the other wants
+prompting. And an unrecoverable `hard_decline` gets `no_action` rather than
+`escalate`, because escalating an insufficient-funds decline just makes work for
+someone who can't fix it either.
+
+### Resulting action mix (1,600 test transactions)
+
+| Action | Count | Share | Observed recovery |
+|---|---|---|---|
+| `auto_retry_now` | 241 | 15.1% | 0.610 |
+| `retry_later` | 248 | 15.5% | 0.520 |
+| `customer_nudge` | 369 | 23.1% | 0.398 |
+| `escalate` | 10 | 0.6% | 0.500 |
+| `no_action` | 732 | 45.8% | 0.030 |
+
+Agent acts on **53.6%** of failures. Of 2,235,064 in failed value it recovers
+426,920 across 423 transactions, leaving only **27 recoverable transactions
+(34,752)** untouched. Precision of acting: 0.493.
+
+## Day 3 — what the fraud hard-block does and does not guarantee
+
+Worth stating precisely, because it is easy to overclaim. Two separate things:
+
+1. **Architectural guarantee — absolute.** Any transaction the system diagnoses
+   as `fraud_block` is never acted on and never has a recovery probability
+   computed. Verified on the test set: 207 diagnosed, 0 actioned, 0 scored.
+   Three independent guards — `RecoveryAgent.decide()` returns before Model 2 or
+   the adapter are reached; Model 2 raises if fraud rows enter its training set;
+   both adapters raise if invoked with a fraud category.
+2. **Model 1's fraud recall — 0.985, not 1.0.** Of 204 true fraud transactions,
+   3 were not recognised as fraud, and 1 of those received a recovery action.
+
+The architecture guarantees behaviour *given* a diagnosis; it cannot guarantee
+the diagnosis. A fraud transaction the classifier fails to recognise is a
+detection miss, not a breach of the rule. `scripts/evaluate_agent.py` asserts (1)
+and merely reports (2) — an earlier version of that check conflated them and
+failed the build over a classifier miss.
+
+## Provider swap: Claude → Gemini (and why it was cheap)
+
+We lost paid Anthropic access mid-build, so the live explanation path moved to
+**Google Gemini's free tier**.
+
+**The swap touched exactly one file** — `src/agent/llm_adapter.py` — plus the
+`/health` reporting block. No agent logic, no thresholds, no fraud rules, no
+model code. This is the anti-vendor-lock-in claim from the original design being
+cashed in under real conditions rather than asserted in a slide: the interface
+was built to make providers swappable, and then a provider actually had to be
+swapped.
+
+`ClaudeAdapter` is **retained and working**, dormant only because no
+`ANTHROPIC_API_KEY` is set. Keeping both implementations is the evidence that
+the abstraction is real.
+
+| Adapter | Provider | Model | When it's picked |
+|---|---|---|---|
+| `GeminiAdapter` | Google | `gemini-2.5-flash` | `GEMINI_API_KEY` set — the active path |
+| `ClaudeAdapter` | Anthropic | `claude-haiku-4-5` | `ANTHROPIC_API_KEY` set and no Gemini key |
+| `TemplateAdapter` | none | — | no key at all |
+
+**Decisions are identical under all three.** Only the wording of the explanation
+changes, because the LLM narrates a decision the threshold policy already made.
+
+Notes on the Gemini choice:
+
+- **SDK: `google-genai`, not `google-generativeai`.** The latter is deprecated;
+  the Gen AI SDK has been the recommended package since May 2025. Worth checking
+  rather than recalling — Google's naming has churned.
+- **Flash-class, not Pro.** Pro models are not free-tier eligible.
+  `gemini-2.5-flash-lite` is the fallback if the flash quota gets tight.
+- **429s are expected, not exceptional.** On a free tier, rate limiting is the
+  steady state under load, so a rate-limited call degrades to the grounded
+  template instead of raising. An explanation is a narration layer; a payment
+  decision must not depend on one. `tests/test_llm_adapters.py` pins this with a
+  simulated 429 rather than leaving it to hope. Confirmed in practice: four rapid
+  live calls hit a real 429 and fell back cleanly.
+- **Thinking is disabled (`thinking_budget=0`), and this was a real bug.** The
+  first live run produced explanations truncated mid-sentence. Gemini 2.5 is a
+  thinking model and reasoning tokens are billed against `max_output_tokens`, so
+  the 300-token budget carried over from the Claude adapter was consumed
+  **286 by thinking, leaving 10 for the answer**. Not a prompt problem and not a
+  model-quality problem — a Claude-shaped assumption that does not transfer.
+  This task is grounded restatement of facts we already supply, so there is
+  nothing to reason about and the whole budget belongs to the answer.
+- **A `MAX_TOKENS` finish is now treated as a failure**, not a result. The first
+  version passed the truncated fragment straight through, where it read as
+  authoritative while stopping mid-clause. Truncated output is worse than a
+  template, so it degrades.
+- **The prompt now requires citing the error code verbatim.** Once truncation was
+  fixed, Gemini produced correct but code-free prose ("the bank timed out").
+  Operations staff need the literal code to quote back to the bank, so this is a
+  product requirement, not a concession to the checker. The checker, in turn,
+  grades the *meaning* semantically — rewording the verified meaning into plain
+  language is the job, and demanding a verbatim substring would fail good
+  explanations.
+- Adapters now declare `provider` / `model` / `is_live` on the class, so
+  `/health` reports the active provider without an isinstance chain that has to
+  grow every time a provider is added.
+
+Verify the live path with `python scripts/check_llm.py` — it makes one real call
+and checks the answer cites the actual error code, reflects the verified meaning,
+and invents no bank terminology.
+
+## Day 3 — LLM adapter
+
+- **Model: Haiku-class / Flash-class.** High-volume per-transaction narration,
+  not a task needing a large model.
+- **The LLM explains a decision; it never makes one.** The action is chosen by
+  the threshold policy before the adapter is called, and the prompt says so, so
+  no prompt-level behaviour can produce a different action than the one logged.
+- **Grounded prompts.** The prompt carries the real error code plus its entry
+  from `src/error_taxonomy.py` and forbids speculation beyond those facts.
+  `ClaudeAdapter(grounded=False)` reproduces the ungrounded version on purpose,
+  for the Candidate 3 before/after.
+- **`TemplateAdapter` fallback when `ANTHROPIC_API_KEY` is absent**, built from
+  the same taxonomy. Explanations are a narration layer; a payment decision is
+  not. The agent, API, and test suite all run offline, and the demo never depends
+  on network access. API errors degrade to the template rather than propagating.
+
+## Day 3 — audit log format
+
+Every decision emits: `transaction_id`, `timestamp`, `payment_method`, `amount`,
+`error_code`, `error_code_meaning` (from the taxonomy, not the model),
+`predicted_category`, `category_probabilities` (full 4-vector),
+`recovery_probability` (null when fraud-blocked), `action`, `fraud_blocked`,
+`explanation`. Served by `GET /decisions`; this is the Day 4 dashboard's feed
+format.
+
 ## Open decisions (fill in as you go)
 
-- ~~Exact classifier algorithm~~ — **locked Day 2: XGBoost** (see above)
-- Agent decision thresholds — **must be retuned**, see the handoff section above
-- Retry timing logic specifics (fixed backoff vs. learned timing)
+- ~~Exact classifier algorithm~~ — **locked Day 2: XGBoost**
+- ~~Agent decision thresholds~~ — **locked Day 3: 0.50 / 0.25** (see above)
+- ~~Retry timing logic~~ — **locked Day 3:** per-transaction budget of 3 +
+  exponential backoff (2, 4, 8 cycles). Fixed backoff, not learned — the storm
+  data showed the win comes from bounding attempts, not from timing them cleverly
 - Dashboard framework choice
 - Deployment target

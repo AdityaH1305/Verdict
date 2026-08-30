@@ -1,0 +1,66 @@
+{
+  "thresholds": {
+    "high": 0.5,
+    "low": 0.25
+  },
+  "n_transactions": 1600,
+  "action_mix": {
+    "auto_retry_now": {
+      "count": 241,
+      "share": 0.1506,
+      "actual_recovery_rate": 0.61,
+      "mean_recovery_prob": 0.5441,
+      "total_amount": 282059.64
+    },
+    "retry_later": {
+      "count": 248,
+      "share": 0.155,
+      "actual_recovery_rate": 0.5202,
+      "mean_recovery_prob": 0.452,
+      "total_amount": 270585.6
+    },
+    "customer_nudge": {
+      "count": 369,
+      "share": 0.2306,
+      "actual_recovery_rate": 0.3984,
+      "mean_recovery_prob": 0.4108,
+      "total_amount": 359334.95
+    },
+    "escalate": {
+      "count": 10,
+      "share": 0.0063,
+      "actual_recovery_rate": 0.5,
+      "mean_recovery_prob": 0.1871,
+      "total_amount": 15390.56
+    },
+    "no_action": {
+      "count": 732,
+      "share": 0.4575,
+      "actual_recovery_rate": 0.0301,
+      "mean_recovery_prob": 0.0473,
+      "total_amount": 1307693.62
+    }
+  },
+  "fraud_hard_block": {
+    "architectural_guarantee": {
+      "diagnosed_as_fraud": 207,
+      "given_a_recovery_action": 0,
+      "recovery_probability_computed": 0
+    },
+    "model_1_fraud_detection": {
+      "true_fraud_transactions": 204,
+      "missed_by_classifier": 3,
+      "recall": 0.9853,
+      "missed_and_acted_on": 1
+    }
+  },
+  "revenue": {
+    "total_failed_value": 2235064.37,
+    "acted_on_count": 858,
+    "acted_on_value": 911980.19,
+    "recovered_count": 423,
+    "recovered_value": 426920.42,
+    "missed_recoverable_count": 27,
+    "missed_recoverable_value": 34751.58
+  }
+}

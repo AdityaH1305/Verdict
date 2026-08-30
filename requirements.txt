@@ -11,8 +11,10 @@ fastapi
 uvicorn
 pydantic
 
-# LLM
-anthropic
+# LLM -- provider-swappable, see src/agent/llm_adapter.py
+google-genai      # GeminiAdapter (active path; free tier)
+anthropic         # ClaudeAdapter (retained, dormant without a paid key)
+python-dotenv
 
 # Dev
 pytest

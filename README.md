@@ -75,10 +75,26 @@ The agent never calls an LLM SDK directly. It calls a single interface:
 def generate_explanation(transaction, category, recovery_prob, action) -> str
 ```
 
-implemented today by a `ClaudeAdapter`. Swapping providers later is a
-one-file change, not a rewrite of agent logic. This also enforces the
-fraud hard-block: the adapter is architecturally never called for
+Swapping providers is a one-file change, not a rewrite of agent logic. This also
+enforces the fraud hard-block: the adapter is architecturally never called for
 `fraud_block` cases, so no prompt can override that decision.
+
+**This got tested for real.** Paid Anthropic access went away mid-build, so the
+live path moved to Google Gemini's free tier. The swap touched exactly one file
+(`src/agent/llm_adapter.py`) plus the `/health` reporting block — no agent logic,
+no thresholds, no fraud rules, no model code.
+
+| Adapter | Model | Picked when |
+|---|---|---|
+| `GeminiAdapter` | `gemini-2.5-flash` | `GEMINI_API_KEY` set — **active** |
+| `ClaudeAdapter` | `claude-haiku-4-5` | `ANTHROPIC_API_KEY` set, no Gemini key |
+| `TemplateAdapter` | — | no key at all |
+
+`ClaudeAdapter` is kept and still works; it's dormant only for lack of a key.
+**Decisions are identical under all three** — the LLM narrates a decision the
+threshold policy already made. On a free tier, rate limits are the steady state
+rather than an edge case, so a 429 degrades to the grounded template instead of
+failing the request.
 
 ## Repo structure
 
@@ -113,8 +129,31 @@ pip install -r requirements.txt
 python src/data_generation/generate_transactions.py   # -> data/raw/transactions.csv
 python scripts/prepare_data.py                        # -> data/processed/{train,test}.csv
 python scripts/train.py                               # -> models/*.pkl, reports/*
+python scripts/evaluate_agent.py                      # -> action mix + revenue
+python scripts/retry_storm_demo.py                    # -> retry-storm before/after
 pytest tests/
 ```
+
+Then the API:
+
+```bash
+uvicorn src.api.main:app --reload
+```
+
+`POST /decide` returns a decision for one failed transaction; `POST /simulate/seed`
+replays held-out transactions for the demo; `GET /stats/breakdown` and
+`GET /stats/recovered-revenue` back the dashboard; `GET /decisions` is the audit
+feed.
+
+For LLM explanations, copy `.env.example` to `.env` and set `GEMINI_API_KEY`
+(free tier — [get one here](https://aistudio.google.com/apikey)), then:
+
+```bash
+python scripts/check_llm.py
+```
+
+That makes one real call and verifies the answer stays grounded in the error-code
+taxonomy.
 
 ## Model results
 
@@ -137,13 +176,66 @@ Model 2: ROC-AUC 0.784, isotonic-calibrated (Brier 0.175 → 0.169). Calibration
 is a correctness requirement, not polish — the agent reads its economic cutoffs
 directly off this probability scale.
 
+## Agent decisions
+
+Thresholds were derived from Model 2's measured score distribution, not guessed.
+The distribution is bimodal, so the cutoffs sit at `0.50` ("recovery is more
+likely than not — just retry it") and `0.25` (the valley floor between the
+recoverable and unrecoverable modes). The build plan's original `0.6` would have
+sent only 1.6% of transactions to `auto_retry_now`.
+
+| Action | Count | Share | Observed recovery |
+|---|---|---|---|
+| `auto_retry_now` | 241 | 15.1% | 0.610 |
+| `retry_later` | 248 | 15.5% | 0.520 |
+| `customer_nudge` | 369 | 23.1% | 0.398 |
+| `escalate` | 10 | 0.6% | 0.500 |
+| `no_action` | 732 | 45.8% | 0.030 |
+
+The agent acts on **53.6%** of failures and leaves only **27 recoverable
+transactions** untouched. Note the mid band splits on *category*, not
+probability: identical odds mean different things depending on whether a bank
+refused or a human walked away.
+
+### What the fraud hard-block guarantees
+
+Two claims, deliberately kept separate:
+
+- **Architectural, absolute** — anything diagnosed as `fraud_block` is never
+  acted on and never scored. 207 diagnosed, **0 actioned, 0 scored**. Three
+  independent guards: the agent returns before Model 2 or the LLM are reached,
+  Model 2 raises if fraud rows enter training, and both adapters raise if invoked
+  with a fraud category. `tests/test_agent_rules.py` proves this with spy objects
+  that fail the build on contact — a post-hoc filter would pass a naive
+  "action == no_action" assertion but fail these.
+- **Model 1's fraud recall — 0.985, not 1.0.** The architecture guarantees
+  behaviour *given* a diagnosis; it cannot guarantee the diagnosis. 3 of 204 true
+  fraud transactions were not recognised as fraud. That's a detection miss, not a
+  breach of the rule, and it's reported rather than asserted.
+
+### Retry storm (see `docs/failure_stories.md`)
+
+Built without a cap first, on purpose. Over 12 polling cycles on 489
+retry-eligible transactions:
+
+| | Uncapped | Budget of 3 + backoff |
+|---|---|---|
+| Retry attempts | 3,025 | **1,062** (−64.9%) |
+| Max attempts on one transaction | 12 | **3** |
+| Attempts that could never succeed | 84.5% | 60.2% |
+| Still queued at end | 213 | **0** |
+
+The uncapped loop did **2.8× the work for 8% more revenue** — and its worst case
+is unbounded, because everything left in that queue is unrecoverable by
+construction.
+
 ## Status
 
 - [x] Data generator (cards + UPI, method-conditional failure logic)
 - [x] Failure classifier (Model 1)
 - [x] Recovery success model (Model 2)
-- [ ] Agent decision logic + LLM adapter
-- [ ] Backend API
+- [x] Agent decision logic + LLM adapter
+- [x] Backend API
 - [ ] Dashboard
 - [ ] Deployment
 - [ ] Architecture doc + "what broke" writeup

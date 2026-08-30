@@ -1,0 +1,32 @@
+{
+  "before": {
+    "label": "uncapped (no budget, no backoff)",
+    "cycles": 12,
+    "queued_transactions": 489,
+    "total_attempts": 3025,
+    "attempts_per_txn_mean": 6.19,
+    "attempts_per_txn_max": 12,
+    "wasted_attempts": 2556,
+    "wasted_attempt_share": 0.845,
+    "recovered": 276,
+    "recovered_value": 283979.76,
+    "still_queued_at_end": 213,
+    "budget_exhausted": 0
+  },
+  "after": {
+    "label": "capped (budget=3, exponential backoff)",
+    "cycles": 12,
+    "queued_transactions": 489,
+    "total_attempts": 1062,
+    "attempts_per_txn_mean": 2.17,
+    "attempts_per_txn_max": 3,
+    "wasted_attempts": 639,
+    "wasted_attempt_share": 0.6017,
+    "recovered": 255,
+    "recovered_value": 242145.39,
+    "still_queued_at_end": 0,
+    "budget_exhausted": 234
+  },
+  "attempt_reduction": 0.6489,
+  "recovered_delta": -21
+}

@@ -53,9 +53,55 @@ issue or a human one?).
 backoff. Run it against a batch of soft_decline transactions and see if
 it re-queues the same transaction on every polling cycle.
 
-- [ ] Log/metric showing retry count before the fix
-- [ ] The fix: per-transaction retry budget + backoff
-- [ ] Log/metric showing the same batch after the fix
+**Status: confirmed.** Reproduced on 489 retry-eligible transactions from the
+held-out set over 12 polling cycles. Run it with
+`python scripts/retry_storm_demo.py`; numbers in `reports/retry_storm.json`,
+chart in `reports/retry_storm.png`.
+
+- [x] **Log/metric showing retry count before the fix**
+
+  | | Uncapped |
+  |---|---|
+  | Total retry attempts | **3,025** |
+  | Attempts per transaction | mean 6.19, **max 12** |
+  | Attempts that could never succeed | **2,556 (84.5% of all attempts)** |
+  | Still queued when the run ended | **213** — these retry forever |
+
+  Max 12 on a 12-cycle run means exactly what it looks like: those transactions
+  were retried on *every single cycle*. The storm concentrates on the
+  transactions least worth retrying — 84.5% of all traffic went to transactions
+  that could never succeed, because the ones that *can* succeed leave the queue
+  and the ones that can't never do. The failure mode is self-reinforcing.
+
+- [x] **The fix:** per-transaction retry budget of 3 + exponential backoff
+      (2, 4, 8 cycles between attempts). Implemented in
+      `src/agent/retry_simulator.py`.
+
+      One subtlety that bit during implementation: the budget has to be spent
+      the moment the last attempt *fails*, not lazily on the transaction's next
+      visit. Enforcing it lazily left transactions whose backoff had pushed them
+      past the horizon sitting in the queue looking permanently pending while
+      actually being finished — 234 phantom entries and a `budget_exhausted`
+      count of 0 that should have been 234.
+
+- [x] **Log/metric showing the same batch after the fix**
+
+  | | Uncapped | Capped + backoff |
+  |---|---|---|
+  | Total retry attempts | 3,025 | **1,062** (−64.9%) |
+  | Max attempts on one transaction | 12 | **3** |
+  | Wasted attempts | 2,556 (84.5%) | 639 (60.2%) |
+  | Transactions recovered | 276 | 255 |
+  | Value recovered | 283,980 | 242,145 |
+  | Still queued at end | 213 | **0** |
+
+  **The honest tradeoff:** the budget costs 21 recoveries (−41,835) to save 65%
+  of retry traffic. That is not free, and the writeup should not pretend it is —
+  three attempts at ~60% each recovers ~94% of what's recoverable, while the
+  uncapped loop eventually gets ~100% by hammering the issuer indefinitely. The
+  uncapped loop did **2.8× the work for 8% more revenue**, and its worst case is
+  unbounded: on a longer run the ratio keeps getting worse while the extra
+  revenue stays flat, because everything still in that queue is unrecoverable.
 
 ## Candidate 3: LLM hallucinating reason codes
 
