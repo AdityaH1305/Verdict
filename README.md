@@ -86,7 +86,7 @@ no thresholds, no fraud rules, no model code.
 
 | Adapter | Model | Picked when |
 |---|---|---|
-| `GeminiAdapter` | `gemini-2.5-flash` | `GEMINI_API_KEY` set — **active** |
+| `GeminiAdapter` | `gemini-2.5-flash-lite` | `GEMINI_API_KEY` set — **active** |
 | `ClaudeAdapter` | `claude-haiku-4-5` | `ANTHROPIC_API_KEY` set, no Gemini key |
 | `TemplateAdapter` | — | no key at all |
 
@@ -95,6 +95,13 @@ no thresholds, no fraud rules, no model code.
 threshold policy already made. On a free tier, rate limits are the steady state
 rather than an edge case, so a 429 degrades to the grounded template instead of
 failing the request.
+
+Measured free-tier behaviour on `flash-lite`: about **11 live calls in a burst**,
+after which the limit persists well beyond a 60-second window — a paced 10/min
+run and a further two-minute wait both still returned 429s. Budget live
+narration per demo, not per minute. Batch paths therefore default to
+`explain=False`, and live narration is reserved for `POST /decide` — the
+interactive path a demo actually drives.
 
 ## Repo structure
 

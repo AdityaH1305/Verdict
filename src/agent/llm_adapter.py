@@ -52,9 +52,11 @@ from src.error_taxonomy import describe, lookup  # noqa: E402
 DEFAULT_MODEL = "claude-haiku-4-5"
 
 # Gemini free tier. Flash-class for the same reason as Haiku-class above; Pro
-# models are not free-tier eligible. gemini-2.5-flash-lite is the fallback if
-# the flash quota gets tight.
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+# models are not free-tier eligible. flash-lite over flash for demo headroom --
+# the free-tier request rate is the binding constraint when narrating a batch,
+# not model quality, and this task is grounded restatement rather than reasoning.
+# "gemini-2.5-flash" is the step up if explanation quality ever needs it.
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite"
 
 MAX_TOKENS = 300
 

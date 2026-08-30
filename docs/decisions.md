@@ -348,7 +348,7 @@ the abstraction is real.
 
 | Adapter | Provider | Model | When it's picked |
 |---|---|---|---|
-| `GeminiAdapter` | Google | `gemini-2.5-flash` | `GEMINI_API_KEY` set — the active path |
+| `GeminiAdapter` | Google | `gemini-2.5-flash-lite` | `GEMINI_API_KEY` set — the active path |
 | `ClaudeAdapter` | Anthropic | `claude-haiku-4-5` | `ANTHROPIC_API_KEY` set and no Gemini key |
 | `TemplateAdapter` | none | — | no key at all |
 
@@ -361,13 +361,51 @@ Notes on the Gemini choice:
   the Gen AI SDK has been the recommended package since May 2025. Worth checking
   rather than recalling — Google's naming has churned.
 - **Flash-class, not Pro.** Pro models are not free-tier eligible.
-  `gemini-2.5-flash-lite` is the fallback if the flash quota gets tight.
+  Settled on **`gemini-2.5-flash-lite`** over `gemini-2.5-flash` for demo
+  headroom: request rate is the binding constraint when narrating a batch, not
+  model quality, and this task is grounded restatement rather than reasoning.
+  `gemini-2.5-flash` is the step up if explanation quality ever needs it.
+- **The flash → flash-lite switch was verified, not assumed**, on the principle
+  that the thinking-token bug only surfaced on a specific model. Two findings
+  worth keeping:
+  - `thinking_budget=0` is accepted on flash-lite, and **flash-lite has thinking
+    off by default anyway** (flash has it on). The setting is therefore redundant
+    on this model but is kept explicit — it guards against a default change and
+    keeps behaviour identical if anyone switches back to flash.
+  - Truncation detection behaves identically: `finish_reason` still renders as
+    `FinishReason.MAX_TOKENS`, so the fallback fires. Confirmed end-to-end
+    through the adapter by forcing a 12-token budget, not just against the raw
+    SDK.
 - **429s are expected, not exceptional.** On a free tier, rate limiting is the
   steady state under load, so a rate-limited call degrades to the grounded
   template instead of raising. An explanation is a narration layer; a payment
   decision must not depend on one. `tests/test_llm_adapters.py` pins this with a
-  simulated 429 rather than leaving it to hope. Confirmed in practice: four rapid
-  live calls hit a real 429 and fell back cleanly.
+  simulated 429 rather than leaving it to hope.
+
+### Measured free-tier limits (`gemini-2.5-flash-lite`)
+
+Measured rather than taken from documentation, because the practical number
+turned out to differ from the naive reading:
+
+| Test | Result |
+|---|---|
+| Rapid burst from cold | **11 live calls** in 12.8s, then 429 |
+| Paced at 10 req/min after a 65s cooldown | 4 live, then **8 consecutive 429s** over 73s |
+| Single call after a further 120s cooldown | still 429 |
+
+The later results are the important ones. The quota does **not** refill on a
+60-second window: once the limit is hit it stayed hit through a paced 10/min run
+and a subsequent two-minute wait, after roughly 50 calls across the session. So
+the usable model is "a modest burst, then a long lockout", not "N per minute,
+forever" — plan capacity per demo, not per minute.
+
+**Consequence for the demo:** do not narrate a whole batch live. This is already
+how the system is built — `POST /simulate/batch` and `decide_batch()` default to
+`explain=False`, and `scripts/evaluate_agent.py` runs with explanations off — so
+live narration is reserved for `POST /decide` on individual transactions, which
+is exactly the interactive path a demo drives. Anything beyond that falls back to
+grounded templates, which is a degradation in prose quality only, never in the
+decision.
 - **Thinking is disabled (`thinking_budget=0`), and this was a real bug.** The
   first live run produced explanations truncated mid-sentence. Gemini 2.5 is a
   thinking model and reasoning tokens are billed against `max_output_tokens`, so

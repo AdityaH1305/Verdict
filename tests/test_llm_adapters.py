@@ -66,6 +66,7 @@ class TestGeminiAdapter:
         assert GeminiAdapter.provider == "google"
         # flash-class only -- Pro models are not free-tier eligible
         assert "flash" in DEFAULT_GEMINI_MODEL
+        assert "pro" not in DEFAULT_GEMINI_MODEL
 
     def test_returns_model_text_on_success(self):
         adapter = _adapter_with(text="The bank timed out; retrying now.")
