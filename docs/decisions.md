@@ -137,10 +137,125 @@ Replaced with `Z9` and `ZU`/`Z8`/`Z7` respectively.
 - `card_age_months` skews low for `fraud_block` (newer/less-established
   cards more associated with fraud patterns in this synthetic model).
 
+## Day 2 — why the data was regenerated
+
+Before training, I checked whether Model 1 was actually a learnable problem.
+It was not.
+
+- **7,057 of 8,000 rows (88%) had an `error_code` that mapped to exactly one
+  `failure_category`.** Only `U30` was ambiguous.
+- Benchmark: **96.6% accuracy with `error_code`, 60.8% without** (majority-class
+  baseline 33.8%).
+
+Model 1 was a lookup table wearing a classifier costume. That guts the whole
+pitch — "diagnosis is a real problem" — and the first question a judge asks is
+*"isn't that just the error code?"*
+
+**Root cause:** the Day 1 generator gave each category a private, disjoint code
+list. Reality is messier. `05` "do not honor" is a deliberately opaque catch-all
+that issuers use to mask fraud suspicion and funds problems alike; an issuer
+timeout (`91`, `U67`) is exactly where a stalled *customer* hides behind a
+*system* code; a wrong MPIN (`ZM`) very often ends in the customer giving up.
+
+**Fix:** categories now emit from *overlapping* code distributions
+(`CARD_CODE_GIVEN_CATEGORY` / `UPI_CODE_GIVEN_CATEGORY`), so `error_code` is
+**informative but not decisive**. Codes that genuinely are unambiguous in
+production (`51` insufficient funds, `54` expired, `Z9`, `ZH`, `59`) stay
+near-pure — the goal was realism, not uniform mud.
+
+Result: deterministic rows fell 88% → 42%, and the naive lookup ceiling fell
+96.4% → 80.4%.
+
+**Critical second-order point:** overlap alone would only have added irreducible
+noise, and no model could then beat the lookup. The overlap had to be
+*resolvable from behaviour*, so category-conditional behavioural distributions
+were sharpened at the same time (fraud → high amount / thin customer history /
+young card / overnight; dropoff → long dwell; hard_decline → high daily-limit
+utilization).
+
+### New feature: `seconds_to_failure`
+
+Added beyond the build plan's feature spec. Cards had no dwell-time analogue to
+`time_since_app_switch`, which left card `customer_dropoff` vs `soft_decline` on
+code `91` **structurally unresolvable** — the model could not have beaten the
+lookup on the exact cases that matter. Every real gateway logs
+time-from-initiation-to-failure.
+
+One subtlety worth keeping: `soft_decline` is **slow** too. A bank-side timeout
+is slow *by definition* — that is what a timeout is (gateway cutoffs sit around
+30s). An intermediate version gave `soft_decline` a fast dwell, which made
+drop-off trivially separable and quietly trained the Candidate 1 ambiguity out
+of the problem. Both categories now overlap on dwell time, which is the honest
+form of the ambiguity: a long wait looks the same whether the bank stalled or
+the human did.
+
+## Day 2 — model results
+
+| | Model | Naive `error_code` lookup |
+|---|---|---|
+| Accuracy | **0.9431** | 0.8087 |
+| Macro-F1 | **0.9451** | 0.7993 |
+
+The lookup baseline is reported on **every** training run, and `scripts/train.py`
+**fails the build** if the model stops beating it. If that gap ever collapses,
+the classifier is not doing real work and the data needs another pass.
+
+Where the difficulty lives: **75 of 91 total errors (82%) are the
+`soft_decline` ↔ `customer_dropoff` pair.** `hard_decline` (F1 0.987) and
+`fraud_block` (F1 0.978, only 3 rows leaked) are near-clean, which is correct —
+insufficient funds genuinely *is* unambiguous. Candidate 1 is now structural
+rather than a single-code artifact.
+
+Model 2: ROC-AUC 0.784, PR-AUC 0.550, Brier 0.1745 → **0.1688** after isotonic
+calibration.
+
+## Day 2 — decisions locked
+
+- **Algorithm: XGBoost** for both models. Native handling of the structural NaNs
+  *and* the categorical columns, and feature importances that survive a panel
+  Q&A better than a black-box net. (Closes the open decision below.)
+- **Model 2's category input is Model 1's full predicted probability vector**,
+  not a hard label and not ground truth. Ground truth is unavailable at serving
+  time, and a hard label discards exactly the uncertainty the agent needs to
+  hedge on ambiguous cases. Trained on **out-of-fold** predictions
+  (`cross_val_predict`) so Model 2 learns against the noise level it will
+  actually face — training on in-sample predictions would be train/serve skew.
+- **Model 2 output is isotonic-calibrated.** The agent reads economic cutoffs
+  straight off this probability scale, so a raw tree score of "0.6" that really
+  means 0.75 would silently corrupt every decision. Calibration is a correctness
+  requirement here, not polish.
+- **Structural NaNs are preserved, not imputed.** A card feature is absent on a
+  UPI row because it does not exist, and "absent" is information.
+- **One shared feature encoder** (`src/features.py`), bundled into each model
+  artifact, so the serving path cannot drift from the training path.
+
+## Day 2 → Day 3 handoff: the thresholds in build_plan.md are wrong
+
+The build plan asked to log Model 2's actual score distribution before finalizing
+agent cutoffs. Doing so shows the proposed thresholds do not fit the data:
+
+| Bucket | Planned action | Share of transactions |
+|---|---|---|
+| `>= 0.6` | `auto_retry_now` | **1.9%** |
+| `0.3 – 0.6` | `retry_later` / `customer_nudge` | 58.5% |
+| `< 0.3` | `escalate` / `no_action` | 39.7% |
+
+At a 0.6 cutoff the agent would essentially **never** take its flagship action.
+This is not a model defect — it is correct. True recovery rates cap out around
+0.61 for `soft_decline` and 0.38 for `customer_dropoff`, so no population in this
+data honestly deserves >70% recovery odds; isotonic calibration correctly refuses
+to invent confidence that isn't there.
+
+The score distribution is also **bimodal** (see `reports/calibration_curve.png`):
+a spike near 0 (`hard_decline`, genuinely unrecoverable) and a broad mass around
+0.40–0.55. **Day 3 should place the cutoffs in the valley between those modes**,
+not at the round numbers guessed before any data existed. Retune and record the
+final values here.
+
 ## Open decisions (fill in as you go)
 
-- Exact classifier algorithm (leaning XGBoost/LightGBM — fast, explainable,
-  defensible in a panel Q&A over a black-box net)
+- ~~Exact classifier algorithm~~ — **locked Day 2: XGBoost** (see above)
+- Agent decision thresholds — **must be retuned**, see the handoff section above
 - Retry timing logic specifics (fixed backoff vs. learned timing)
 - Dashboard framework choice
 - Deployment target

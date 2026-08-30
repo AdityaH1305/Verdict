@@ -92,18 +92,56 @@ src/
   agent/            # decision logic + LLM adapter interface
   api/              # backend serving layer
   dashboard/        # frontend
+  features.py       # shared feature spec + encoder (one definition, both models)
+  paths.py          # canonical project paths
 models/           # saved trained model artifacts
-notebooks/        # EDA, model evaluation, calibration plots
+reports/          # confusion matrix, calibration curve, metrics.json
+notebooks/        # ad-hoc EDA
 docs/             # architecture doc, decisions log, "what broke" writeup
-scripts/          # one-off utility scripts (train, generate, eval)
-tests/
+scripts/          # prepare_data.py, train.py
+tests/            # guard tests for the architectural hard rules
 ```
+
+Evaluation artifacts are emitted as PNG/JSON by `scripts/train.py` rather than
+living in notebooks, so they are reproducible, run headless, and drop straight
+into the dashboard and pitch video.
+
+## Running it
+
+```bash
+pip install -r requirements.txt
+python src/data_generation/generate_transactions.py   # -> data/raw/transactions.csv
+python scripts/prepare_data.py                        # -> data/processed/{train,test}.csv
+python scripts/train.py                               # -> models/*.pkl, reports/*
+pytest tests/
+```
+
+## Model results
+
+| | Model 1 (XGBoost) | Naive `error_code` lookup |
+|---|---|---|
+| Accuracy | **0.943** | 0.809 |
+| Macro-F1 | **0.945** | 0.799 |
+
+The lookup baseline is not decoration. An early version of the data generator
+made `error_code` a near-deterministic map to the label, so the "classifier"
+scored 96.6% by memorizing a lookup table. The generator was rebuilt so codes
+overlap the way they do in production, and `scripts/train.py` now **fails the
+build** if the model ever stops beating that baseline. See `docs/decisions.md`.
+
+**82% of the model's remaining errors are the single `soft_decline` ↔
+`customer_dropoff` pair** — the ambiguity this project was designed to expose.
+`hard_decline` and `fraud_block` sit at 0.99 recall.
+
+Model 2: ROC-AUC 0.784, isotonic-calibrated (Brier 0.175 → 0.169). Calibration
+is a correctness requirement, not polish — the agent reads its economic cutoffs
+directly off this probability scale.
 
 ## Status
 
-- [ ] Data generator (cards + UPI, method-conditional failure logic)
-- [ ] Failure classifier (Model 1)
-- [ ] Recovery success model (Model 2)
+- [x] Data generator (cards + UPI, method-conditional failure logic)
+- [x] Failure classifier (Model 1)
+- [x] Recovery success model (Model 2)
 - [ ] Agent decision logic + LLM adapter
 - [ ] Backend API
 - [ ] Dashboard

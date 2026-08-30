@@ -1,0 +1,146 @@
+{
+  "dataset": {
+    "train_rows": 6400,
+    "test_rows": 1600,
+    "category_balance": {
+      "hard_decline": 0.3341,
+      "customer_dropoff": 0.2695,
+      "soft_decline": 0.2688,
+      "fraud_block": 0.1277
+    }
+  },
+  "model_1_failure_classifier": {
+    "accuracy": 0.9431,
+    "macro_f1": 0.9451,
+    "baseline_error_code_lookup": {
+      "accuracy": 0.8087,
+      "macro_f1": 0.7993
+    },
+    "lift_over_baseline": {
+      "accuracy": 0.1344,
+      "macro_f1": 0.1458
+    },
+    "per_class": {
+      "customer_dropoff": {
+        "precision": 0.9426,
+        "recall": 0.875,
+        "f1-score": 0.9076,
+        "support": 432.0
+      },
+      "fraud_block": {
+        "precision": 0.971,
+        "recall": 0.9853,
+        "f1-score": 0.9781,
+        "support": 204.0
+      },
+      "hard_decline": {
+        "precision": 0.9869,
+        "recall": 0.9869,
+        "f1-score": 0.9869,
+        "support": 534.0
+      },
+      "soft_decline": {
+        "precision": 0.8799,
+        "recall": 0.9372,
+        "f1-score": 0.9077,
+        "support": 430.0
+      }
+    },
+    "confusion_matrix": {
+      "labels": [
+        "customer_dropoff",
+        "fraud_block",
+        "hard_decline",
+        "soft_decline"
+      ],
+      "matrix": [
+        [
+          378,
+          0,
+          1,
+          53
+        ],
+        [
+          0,
+          201,
+          2,
+          1
+        ],
+        [
+          1,
+          5,
+          527,
+          1
+        ],
+        [
+          22,
+          1,
+          4,
+          403
+        ]
+      ]
+    },
+    "total_errors": 91,
+    "soft_vs_dropoff_errors": 75,
+    "fraud_block_leakage": 3,
+    "feature_importances": {
+      "error_code": 0.5874000191688538,
+      "seconds_to_failure": 0.08110000193119049,
+      "time_since_app_switch": 0.07989999651908875,
+      "card_age_months": 0.05959999933838844,
+      "is_3ds_flow": 0.053599998354911804,
+      "customer_txn_history_count": 0.023399999365210533,
+      "daily_limit_utilization": 0.022199999541044235,
+      "issuing_bank": 0.013100000098347664,
+      "merchant_category": 0.011900000274181366,
+      "amount": 0.01080000028014183,
+      "psp_app": 0.010700000450015068,
+      "card_network": 0.010300000198185444,
+      "time_of_day": 0.010200000368058681,
+      "customer_past_failure_rate": 0.010099999606609344,
+      "day_of_week": 0.00800000037997961,
+      "retry_count": 0.007699999958276749,
+      "payment_method": 0.0
+    }
+  },
+  "model_2_recovery_success": {
+    "n_test": 1396,
+    "positive_rate": 0.3223,
+    "roc_auc": 0.7839,
+    "pr_auc": 0.5501,
+    "brier_calibrated": 0.1688,
+    "brier_uncalibrated": 0.1745,
+    "roc_auc_uncalibrated": 0.7795,
+    "threshold_buckets": {
+      ">=0.6 (auto_retry_now)": 0.0186,
+      "0.3-0.6 (retry_later / nudge)": 0.5845,
+      "<0.3 (escalate / no_action)": 0.3968
+    },
+    "calibration_curve": {
+      "mean_predicted": [
+        0.0155,
+        0.0299,
+        0.0459,
+        0.1466,
+        0.3615,
+        0.4209,
+        0.45,
+        0.4788,
+        0.506,
+        0.5692
+      ],
+      "fraction_positive": [
+        0.0214,
+        0.047,
+        0.0538,
+        0.1,
+        0.4101,
+        0.4143,
+        0.4964,
+        0.4825,
+        0.625,
+        0.5786
+      ]
+    }
+  }
+}
