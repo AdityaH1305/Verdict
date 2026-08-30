@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+*.pkl
+*.joblib
+data/raw/*.csv
+data/processed/*.csv
+.ipynb_checkpoints/
+.DS_Store
+node_modules/
+dist/
+build/
