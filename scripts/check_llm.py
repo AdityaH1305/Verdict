@@ -39,6 +39,77 @@ INVENTED_TERMS = [
     "insufficient funds", "expired", "stolen", "blocked card", "do not honor",
 ]
 
+# What the explanation must CONVEY about SAMPLE_TXN's failure.
+#
+# Grounding means "says what the taxonomy says", not "repeats its wording".
+# Rewording the verified meaning into plain language is the job, so paraphrase
+# has to pass: a bank that "did not respond in time" has timed out, and for a
+# merchant-ops reader that phrasing is arguably clearer than the jargon.
+#
+# Each entry is one required concept and the lexical families that express it.
+# The explanation must hit at least one form. An earlier version listed only
+# morphological variants of the single word "timeout" while claiming to check
+# the concept -- it failed a correct explanation for using different words.
+REQUIRED_CONCEPTS = {
+    "the failure was a timeout / the bank did not respond": [
+        # the jargon
+        "timed out", "timeout", "time out", "timing out",
+        # plain-language equivalents
+        "did not respond", "didn't respond", "not respond", "no response",
+        "never responded", "failed to respond", "without responding",
+        "unresponsive", "no reply", "did not reply", "took too long",
+        "exceeded the time", "not answer", "no answer",
+    ],
+}
+
+
+def grade_explanation(explanation: str) -> list:
+    """
+    Return a list of grounding problems with `explanation`; empty means it passed.
+
+    Two kinds of check, deliberately held to different standards:
+
+      The error CODE is matched literally, because the system prompt explicitly
+      requires citing it -- operations staff need the exact string to quote back
+      to the bank.
+
+      The MEANING is matched semantically (see REQUIRED_CONCEPTS), because
+      restating it in plain language is the job. Demanding the taxonomy's own
+      wording would fail good explanations, which is exactly what happened: a
+      correct "the bank did not respond in time" was flagged because the checker
+      only accepted variants of the word "timeout".
+
+    Separated from main() so the grader can be tested against known-good and
+    known-bad text without spending an API call -- a grader nobody tests is how
+    the lexical-vs-semantic bug survived in the first place.
+    """
+    truth = lookup(SAMPLE_TXN["error_code"], SAMPLE_TXN["payment_method"])
+    lowered = explanation.lower()
+    problems = []
+
+    if SAMPLE_TXN["error_code"].lower() not in lowered:
+        problems.append(f"does not cite the actual error code {SAMPLE_TXN['error_code']}")
+
+    for concept, forms in REQUIRED_CONCEPTS.items():
+        if not any(f in lowered for f in forms):
+            problems.append(
+                f"does not convey that {concept} "
+                f"(verified meaning: {truth.meaning})"
+            )
+
+    invented = [t for t in INVENTED_TERMS if t in lowered]
+    if invented:
+        problems.append(f"introduces terminology it was never given: {invented}")
+
+    # The action was decided before the model was called; it must not propose
+    # a different one.
+    contradictions = [a for a in ("no action", "escalate", "nudge", "do not retry")
+                      if a in lowered]
+    if contradictions:
+        problems.append(f"contradicts the chosen action ({ACTION}): {contradictions}")
+
+    return problems
+
 
 def main():
     load_env()
@@ -68,36 +139,7 @@ def main():
               "Check the key and any rate limits.")
         return 1
 
-    # --- grounding checks ---
-    #
-    # Grounding means "says only what the taxonomy says", not "quotes it
-    # verbatim". Rewording the verified meaning into plain language is the job;
-    # demanding an exact substring would fail good explanations. So the meaning
-    # check looks for the load-bearing CONCEPT (a timeout), not the phrasing.
-    #
-    # The error-code citation is checked literally, because the system prompt
-    # explicitly requires it -- operations staff need the exact code to quote
-    # back to the bank.
-    truth = lookup(SAMPLE_TXN["error_code"], SAMPLE_TXN["payment_method"])
-    lowered = explanation.lower()
-    problems = []
-
-    if SAMPLE_TXN["error_code"].lower() not in lowered:
-        problems.append(f"does not cite the actual error code {SAMPLE_TXN['error_code']}")
-
-    if not any(w in lowered for w in ("timed out", "timeout", "time out", "timing out")):
-        problems.append(f"does not reflect the verified meaning ({truth.meaning})")
-
-    invented = [t for t in INVENTED_TERMS if t in lowered]
-    if invented:
-        problems.append(f"introduces terminology it was never given: {invented}")
-
-    # The action was decided before the model was called; it must not propose
-    # a different one.
-    contradictions = [a for a in ("no action", "escalate", "nudge", "do not retry")
-                      if a in lowered]
-    if contradictions:
-        problems.append(f"contradicts the chosen action ({ACTION}): {contradictions}")
+    problems = grade_explanation(explanation)
 
     print()
     if problems:

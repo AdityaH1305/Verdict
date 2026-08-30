@@ -421,10 +421,22 @@ decision.
 - **The prompt now requires citing the error code verbatim.** Once truncation was
   fixed, Gemini produced correct but code-free prose ("the bank timed out").
   Operations staff need the literal code to quote back to the bank, so this is a
-  product requirement, not a concession to the checker. The checker, in turn,
-  grades the *meaning* semantically — rewording the verified meaning into plain
-  language is the job, and demanding a verbatim substring would fail good
-  explanations.
+  product requirement, not a concession to the checker.
+- **The grounding checker had the same class of bug it was built to catch.** It
+  graded the *meaning* against four strings — `timed out`, `timeout`, `time out`,
+  `timing out` — all morphological variants of one word, while its own comment
+  claimed to be checking "the load-bearing CONCEPT, not the phrasing". A correct
+  explanation saying the bank "did not respond in time" was flagged as ungrounded.
+  The fix grades against named concepts with multiple lexical families
+  (`REQUIRED_CONCEPTS`), so jargon and plain-language rewordings both pass.
+
+  Loosening a checker risks making it vacuous, so the grader was extracted into
+  `grade_explanation()` and `tests/test_grounding_checker.py` now tests it in
+  pairs: five real paraphrases must pass, and five explanations that are each
+  wrong in exactly one way — missing code, invented "insufficient funds",
+  hallucinated CVV/3DS on a UPI transaction, contradicting the chosen action,
+  saying nothing about the failure's nature — must still fail. A grader nobody
+  tested is how the original bug survived.
 - Adapters now declare `provider` / `model` / `is_live` on the class, so
   `/health` reports the active provider without an isinstance chain that has to
   grow every time a provider is added.
