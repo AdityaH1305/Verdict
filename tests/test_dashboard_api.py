@@ -1,0 +1,171 @@
+"""
+Tests for the endpoints the dashboard depends on.
+
+The load-bearing one is `test_bulk_path_never_calls_a_live_provider`: the whole
+quota strategy rests on ordinary dashboard use being served by the offline
+template adapter, with live calls confined to a human clicking "explain live".
+That is a claim about wiring, so it is asserted with a spy that raises on
+contact rather than trusted.
+"""
+
+import json
+import os
+import sys
+
+import pytest
+from fastapi.testclient import TestClient
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.agent.llm_adapter import TemplateAdapter  # noqa: E402
+from src.api import main as api_main  # noqa: E402
+from src.paths import CLASSIFIER_PATH, TEST_DATA  # noqa: E402
+
+requires_models = pytest.mark.skipif(
+    not (os.path.exists(CLASSIFIER_PATH) and os.path.exists(TEST_DATA)),
+    reason="run scripts/train.py first",
+)
+
+
+class ExplodingAdapter:
+    """Fails the test if the dashboard's bulk path ever reaches a live provider."""
+
+    provider = "exploding"
+    model = "none"
+    is_live = True
+
+    def describe_self(self):
+        return {"adapter": "ExplodingAdapter", "provider": self.provider,
+                "model": self.model, "live": True}
+
+    def generate_explanation(self, *args, **kwargs):
+        raise AssertionError(
+            "A looping dashboard endpoint called the live adapter. Bulk work must "
+            "use TemplateAdapter -- see the bulk_agent wiring in src/api/main.py."
+        )
+
+
+@pytest.fixture
+def client():
+    with TestClient(api_main.app) as c:
+        yield c
+
+
+@requires_models
+class TestQuotaSafety:
+    def test_bulk_agent_uses_the_template_adapter(self, client):
+        assert isinstance(api_main.STATE["bulk_agent"].adapter, TemplateAdapter)
+
+    def test_bulk_and_live_agents_share_loaded_models(self, client):
+        """The second agent must not reload or duplicate the model artifacts."""
+        live, bulk = api_main.STATE["agent"], api_main.STATE["bulk_agent"]
+        assert live.classifier is bulk.classifier
+        assert live.recovery_model is bulk.recovery_model
+
+    def test_bulk_path_never_calls_a_live_provider(self, client):
+        """A full dashboard load must make zero provider calls."""
+        original = api_main.STATE["agent"].adapter
+        api_main.STATE["agent"].adapter = ExplodingAdapter()
+        try:
+            assert client.post("/simulate/seed?n=25").status_code == 200
+            assert client.get("/stats/breakdown?n=25").status_code == 200
+            assert client.get("/stats/recovered-revenue?n=25").status_code == 200
+            assert client.get("/decisions?limit=25").status_code == 200
+        finally:
+            api_main.STATE["agent"].adapter = original
+
+
+@requires_models
+class TestDecisionFeed:
+    def test_explanations_are_populated(self, client):
+        """
+        Regression: the batch path used to log explanation="" for every row,
+        leaving the dashboard's "why" panel empty.
+        """
+        client.post("/simulate/seed?n=25")
+        decisions = client.get("/decisions?limit=25").json()["decisions"]
+
+        assert decisions
+        assert all(d["explanation"].strip() for d in decisions)
+
+    def test_explanations_are_grounded_in_the_taxonomy(self, client):
+        client.post("/simulate/seed?n=40")
+        decisions = client.get("/decisions?limit=40").json()["decisions"]
+
+        coded = [d for d in decisions
+                 if d["error_code"] and not d["fraud_blocked"]]
+        assert coded, "expected some transactions with an error code"
+        # the explanation cites the real code, not an invented reason
+        assert all(str(d["error_code"]) in d["explanation"] for d in coded)
+
+    def test_fraud_rows_carry_the_hard_rule_wording_and_no_score(self, client):
+        client.post("/simulate/seed?n=60")
+        decisions = client.get("/decisions?limit=60").json()["decisions"]
+
+        fraud = [d for d in decisions if d["fraud_blocked"]]
+        assert fraud, "expected at least one fraud-blocked transaction"
+        for d in fraud:
+            assert d["recovery_probability"] is None
+            assert d["action"] == "no_action"
+            assert "fraud" in d["explanation"].lower()
+
+    def test_seed_resets_the_feed_between_runs(self, client):
+        """
+        Each seed is one self-contained replay. Without the reset the log
+        accumulated across runs and the feed showed several batches at once,
+        with counts that no longer matched the stats panels.
+        """
+        client.post("/simulate/seed?n=30")
+        first = client.get("/decisions?limit=500").json()["total"]
+        client.post("/simulate/seed?n=30")
+        second = client.get("/decisions?limit=500").json()["total"]
+
+        assert first == 30
+        assert second == 30, "audit log accumulated across seeds"
+
+
+@requires_models
+class TestDashboardRoutes:
+    def test_root_serves_the_dashboard(self, client):
+        r = client.get("/")
+        assert r.status_code == 200
+        assert "Revenue Recovery Agent" in r.text
+        assert "Live decision feed" in r.text
+
+    def test_retry_storm_report_is_served(self, client):
+        r = client.get("/reports/retry-storm")
+        if r.status_code == 404:
+            pytest.skip("run scripts/retry_storm_demo.py first")
+
+        body = r.json()
+        assert body["before"]["total_attempts"] > body["after"]["total_attempts"]
+        assert body["after"]["attempts_per_txn_max"] <= body["before"]["attempts_per_txn_max"]
+        assert body["after"]["still_queued_at_end"] == 0
+
+    def test_retry_storm_404s_cleanly_when_missing(self, client, monkeypatch):
+        monkeypatch.setattr(api_main, "RETRY_STORM_REPORT", "/nonexistent/retry_storm.json")
+        r = client.get("/reports/retry-storm")
+
+        assert r.status_code == 404
+        assert "retry_storm_demo" in r.json()["detail"]
+
+    def test_breakdown_exposes_the_card_vs_upi_split(self, client):
+        """The dashboard's skew chart depends on this shape existing."""
+        body = client.get("/stats/breakdown?n=200").json()
+
+        assert set(body["category_by_method"]) <= {"card", "upi"}
+        for method in body["category_by_method"].values():
+            assert method, "expected per-category counts for each payment method"
+
+
+@requires_models
+def test_dashboard_html_has_no_external_dependencies():
+    """
+    The page must stay offline-safe: no CDN scripts, stylesheets, or fonts.
+    A demo that breaks on a bad connection is worse than a plainer one.
+    """
+    with open(api_main.DASHBOARD_INDEX, encoding="utf-8") as f:
+        html = f.read()
+
+    for marker in ("http://", "https://", "//cdn", "unpkg", "jsdelivr"):
+        assert marker not in html, f"external reference found: {marker}"

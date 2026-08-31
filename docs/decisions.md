@@ -470,6 +470,64 @@ Every decision emits: `transaction_id`, `timestamp`, `payment_method`, `amount`,
 `explanation`. Served by `GET /decisions`; this is the Day 4 dashboard's feed
 format.
 
+## Day 4 — dashboard
+
+**Framework: none.** A single self-contained `src/dashboard/index.html` —
+vanilla JS + CSS, no build step, no `npm install`, no CDN — served by FastAPI at
+`GET /`. This closes the open "dashboard framework" decision below.
+
+Node 24 is available, so Vite + React was viable. Rejected because the deciding
+constraints were operational, not architectural:
+
+- **One command, one server, one port.** Same origin as the API means no CORS,
+  no proxy config, and no second dev server to babysit mid-demo.
+- **Offline-safe.** A CDN-hosted React breaks the demo on a bad connection, which
+  already happened once during this build. `tests/test_dashboard_api.py` asserts
+  the page contains no external references so it stays that way.
+- Four sections of bar charts don't need a component framework, and hand-rolled
+  CSS bars were less work than wiring a chart library into a no-build page.
+
+### Quota safety: two agents, one set of models
+
+Normal dashboard use makes **zero** live-provider calls. The API now holds two
+agents sharing the *same* loaded model objects (no second load, no double
+memory):
+
+| Agent | Adapter | Used by |
+|---|---|---|
+| `agent` | live (Gemini) | `POST /decide` only |
+| `bulk_agent` | `TemplateAdapter` | `/simulate/seed`, `/stats/*`, the feed |
+
+Anything that loops is served by the template adapter — still grounded in the
+real error-code taxonomy, just generated deterministically. Live calls are
+confined to a human clicking "Explain live with Gemini" on one expanded row, and
+that button is absent on fraud-blocked rows.
+
+The policy lives in the API rather than the agent on purpose: the agent explains
+with whatever adapter it is handed, and the API decides which agent handles which
+kind of work. A spy adapter in `TestQuotaSafety` fails the build if a looping
+endpoint ever reaches a live provider.
+
+### Three defects found while building it
+
+All three were invisible until something actually consumed the data:
+
+1. **`GET /decisions` returned `explanation: ""` for every transaction.** The
+   batch path hard-coded an empty string, so the "expandable why" — the
+   auditability story — had nothing to show. The audit record already declared
+   an `explanation` field, so this was a defect against an existing contract.
+   Fixed with an `explain` flag on `decide_batch()` (default off, so evaluation
+   runs are unaffected — verified by re-running `evaluate_agent.py` to identical
+   numbers).
+2. **The audit log accumulated across seed runs.** Two page loads produced 600
+   mixed entries whose counts no longer matched the stats panels. `/simulate/seed`
+   now clears the feed first: each seed is one self-contained replay.
+3. **The prompt described an absent error code as the code `"none"`**, so Gemini
+   wrote *"the payment failed with the error code \"none\""*. An absent code is a
+   fact about the transaction, not a code whose value is the word "none". Also
+   caught a latent bug on the same line: `NaN` is truthy, so a pandas-missing code
+   would have rendered as `"nan"`.
+
 ## Open decisions (fill in as you go)
 
 - ~~Exact classifier algorithm~~ — **locked Day 2: XGBoost**
@@ -477,5 +535,5 @@ format.
 - ~~Retry timing logic~~ — **locked Day 3:** per-transaction budget of 3 +
   exponential backoff (2, 4, 8 cycles). Fixed backoff, not learned — the storm
   data showed the win comes from bounding attempts, not from timing them cleverly
-- Dashboard framework choice
+- ~~Dashboard framework choice~~ - **locked Day 4: none** (single-file vanilla JS, see above)
 - Deployment target

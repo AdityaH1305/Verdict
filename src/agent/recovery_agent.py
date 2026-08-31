@@ -43,6 +43,13 @@ from src.models.recovery_success_model import RecoverySuccessModel  # noqa: E402
 
 FRAUD_CLASS = "fraud_block"
 
+# Written here, not by a model. The adapter is never called for fraud, so this
+# is the only explanation a fraud-blocked transaction can ever carry.
+FRAUD_EXPLANATION = (
+    "Blocked as suspected fraud. Recovery is not attempted for fraud-flagged "
+    "transactions under any circumstances, and no recovery estimate is produced."
+)
+
 
 class Action(str, Enum):
     AUTO_RETRY_NOW = "auto_retry_now"
@@ -128,9 +135,7 @@ class RecoveryAgent:
                 transaction, category, proba_map,
                 recovery_prob=None,
                 action=Action.NO_ACTION,
-                explanation=("Blocked as suspected fraud. Recovery is not attempted "
-                             "for fraud-flagged transactions under any circumstances, "
-                             "and no recovery estimate is produced."),
+                explanation=FRAUD_EXPLANATION,
                 fraud_blocked=True,
             )
         # -------------------------------------------------------------------
@@ -149,8 +154,8 @@ class RecoveryAgent:
         return self._record(transaction, category, proba_map, recovery_prob,
                             action, explanation, fraud_blocked=False)
 
-    def decide_batch(self, transactions: pd.DataFrame,
-                      log: bool = False) -> pd.DataFrame:
+    def decide_batch(self, transactions: pd.DataFrame, log: bool = False,
+                      explain: bool = False) -> pd.DataFrame:
         """
         Vectorized decisions for a batch. Same rules as decide(), but the models
         run once over the whole frame instead of per row.
@@ -160,6 +165,14 @@ class RecoveryAgent:
 
         `log` appends to the audit feed. Off by default: a 1,600-row evaluation
         run has no reason to build an audit trail, but the API's demo seed does.
+
+        `explain` narrates each logged decision through `self.adapter`. Only the
+        narration loops -- the models still run vectorized. Off by default so
+        evaluation runs stay fast.
+
+        Which adapter narrates is the caller's choice, deliberately: the agent
+        explains with whatever it was given, and the API hands the bulk path a
+        TemplateAdapter so dashboard use cannot spend a live provider's quota.
         """
         df = transactions.reset_index(drop=True)
         category_proba = self.classifier.predict_proba(df)
@@ -187,13 +200,26 @@ class RecoveryAgent:
 
         if log:
             for i, (_, row) in enumerate(df.iterrows()):
+                txn = row.to_dict()
+
+                if is_fraud[i]:
+                    # Same wording and same hard rule as decide(). The adapter is
+                    # not called -- fraud never reaches a prompt.
+                    explanation = FRAUD_EXPLANATION
+                elif explain:
+                    explanation = self.adapter.generate_explanation(
+                        txn, categories[i], float(recovery[i]), actions[i].value
+                    )
+                else:
+                    explanation = ""
+
                 self._record(
-                    row.to_dict(), categories[i],
+                    txn, categories[i],
                     {c: round(float(p), 4)
                      for c, p in zip(self.classifier.classes_, category_proba[i])},
                     None if is_fraud[i] else float(recovery[i]),
                     actions[i],
-                    explanation="",   # batch path does not narrate; see `explain`
+                    explanation=explanation,
                     fraud_blocked=bool(is_fraud[i]),
                 )
         return out

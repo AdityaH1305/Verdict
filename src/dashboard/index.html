@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revenue Recovery Agent</title>
+<!--
+  Single self-contained page: no build step, no npm install, no CDN.
+
+  Served by FastAPI itself (GET /), so it runs same-origin with the API -- no
+  CORS, no proxy config, no second dev server. It also works with no internet,
+  which matters for a live demo.
+
+  Everything here is presentation. All numbers come from the backend endpoints;
+  this file computes no decisions of its own.
+-->
+<style>
+  :root {
+    --bg: #0f1216;
+    --panel: #171b21;
+    --panel-2: #1d222a;
+    --line: #2a313b;
+    --text: #e6e9ee;
+    --muted: #8d97a5;
+    --accent: #48b3a0;
+
+    --hard: #e07a5f;
+    --soft: #6fa8dc;
+    --drop: #e9c46a;
+    --fraud: #b56576;
+
+    --card-c: #6c8ee3;
+    --upi-c: #48b3a0;
+
+    --auto: #2a9d8f;
+    --later: #8ab17d;
+    --nudge: #e9c46a;
+    --esc: #f4a261;
+    --none: #6b7480;
+
+    --before: #e63946;
+    --after: #2a9d8f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 80px; }
+
+  header { display: flex; justify-content: space-between; align-items: flex-start;
+           gap: 20px; flex-wrap: wrap; margin-bottom: 22px; }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; max-width: 62ch; }
+
+  .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  select, button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 7px; padding: 7px 11px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #06231e; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  button:hover:not(:disabled) { filter: brightness(1.12); }
+
+  section { background: var(--panel); border: 1px solid var(--line);
+            border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
+       color: var(--muted); margin: 0 0 4px; font-weight: 600; }
+  .note { color: var(--muted); font-size: 12.5px; margin: 0 0 16px; max-width: 78ch; }
+
+  /* headline */
+  .headline { display: flex; gap: 34px; align-items: flex-end; flex-wrap: wrap; }
+  .big { font-size: 46px; font-weight: 700; letter-spacing: -0.02em; color: var(--accent);
+         line-height: 1; font-variant-numeric: tabular-nums; }
+  .big-label { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+  .stats { display: flex; gap: 26px; flex-wrap: wrap; }
+  .stat .v { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat .k { color: var(--muted); font-size: 12px; }
+
+  /* bars */
+  .row { display: grid; grid-template-columns: 148px 1fr 116px; gap: 12px;
+         align-items: center; margin-bottom: 9px; }
+  .row .lbl { font-size: 13px; }
+  .track { background: var(--panel-2); border-radius: 5px; height: 24px;
+           overflow: hidden; display: flex; }
+  .track > span { height: 100%; display: block; transition: width .35s ease; }
+  .amt { text-align: right; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px;
+            font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+              margin-right: 6px; vertical-align: middle; }
+
+  /* retry storm */
+  .storm { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 18px; }
+  .metric { background: var(--panel-2); border: 1px solid var(--line);
+            border-radius: 9px; padding: 13px 15px; }
+  .metric .t { font-size: 12px; color: var(--muted); margin-bottom: 9px; }
+  .pair { display: flex; align-items: baseline; gap: 9px; font-variant-numeric: tabular-nums; }
+  .pair .b { color: var(--before); font-size: 20px; font-weight: 700; }
+  .pair .a { color: var(--after); font-size: 20px; font-weight: 700; }
+  .pair .arw { color: var(--muted); }
+  .minibars { margin-top: 9px; }
+  .minibar { height: 7px; border-radius: 4px; margin-bottom: 4px; }
+
+  .verdict { margin-top: 16px; padding: 12px 14px; border-radius: 9px;
+             background: rgba(42,157,143,.09); border: 1px solid rgba(42,157,143,.28);
+             font-size: 13px; }
+  .caveat { margin-top: 9px; color: var(--muted); font-size: 12.5px; }
+
+  /* feed */
+  table { width: 100%; border-collapse: collapse; }
+  thead th { text-align: left; font-size: 11px; text-transform: uppercase;
+             letter-spacing: .06em; color: var(--muted); font-weight: 600;
+             padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid rgba(42,49,59,.5); font-size: 13px; }
+  tbody tr.head { cursor: pointer; }
+  tbody tr.head:hover { background: var(--panel-2); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 20px;
+           font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 4px;
+          font-size: 11.5px; background: var(--panel-2); border: 1px solid var(--line); }
+
+  .why { background: var(--panel-2); }
+  .why-inner { padding: 14px 16px 16px; }
+  .why h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase;
+            letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+  .why p { margin: 0 0 14px; max-width: 88ch; }
+  .why .grounded { color: var(--muted); font-size: 12.5px; }
+  .probs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .prob { background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+          padding: 5px 9px; font-size: 12px; }
+  .prob b { font-variant-numeric: tabular-nums; }
+
+  .live-out { margin-top: 10px; padding: 11px 13px; border-radius: 8px;
+              background: rgba(108,142,227,.09); border: 1px solid rgba(108,142,227,.3); }
+  .muted { color: var(--muted); }
+  .err { color: #e07a5f; }
+  .empty { color: var(--muted); padding: 26px 4px; text-align: center; }
+  .fraudrow td { background: rgba(181,101,118,.07); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Revenue Recovery Agent</h1>
+      <div class="sub">Diagnoses <em>why</em> a payment failed, then decides the
+        economically correct recovery action. Every decision is auditable.</div>
+    </div>
+    <div class="controls">
+      <label class="sub" for="batch">Batch</label>
+      <select id="batch">
+        <option>100</option><option selected>300</option>
+        <option>500</option><option>1000</option>
+      </select>
+      <button class="primary" id="run">Run simulation</button>
+      <span id="status" class="sub"></span>
+    </div>
+  </header>
+
+  <!-- 1. headline -->
+  <section>
+    <h2>Recovered revenue</h2>
+    <p class="note">What the agent actually got back, on held-out transactions it
+      had never seen. The expected figure is the model's own estimate — shown
+      beside the realised number so it can be checked rather than trusted.</p>
+    <div class="headline">
+      <div>
+        <div class="big" id="recovered">—</div>
+        <div class="big-label">actually recovered (<span id="recovered-n">—</span> transactions)</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="v" id="expected">—</div><div class="k">expected (model estimate)</div></div>
+        <div class="stat"><div class="v" id="failed">—</div><div class="k">total failed value</div></div>
+        <div class="stat"><div class="v" id="acted">—</div><div class="k">acted on</div></div>
+        <div class="stat"><div class="v" id="rate">—</div><div class="k">of acted-on recovered</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. breakdown -->
+  <section>
+    <h2>Failure categories — cards vs UPI</h2>
+    <p class="note">The two rails fail for structurally different reasons, which is
+      why <code>payment_method</code> is a real feature rather than decoration.
+      Cards skew to issuer-side <strong>hard declines</strong>; UPI skews to
+      operational <strong>drop-off</strong> and <strong>soft declines</strong>.</p>
+    <div id="breakdown"></div>
+    <div class="legend">
+      <span><i style="background:var(--card-c)"></i>card</span>
+      <span><i style="background:var(--upi-c)"></i>UPI</span>
+    </div>
+    <div id="skew" class="caveat"></div>
+  </section>
+
+  <!-- 3. actions -->
+  <section>
+    <h2>What the agent did</h2>
+    <p class="note">Thresholds were derived from the model's measured score
+      distribution, not guessed. Fraud-blocked transactions are never actioned and
+      never scored — an architectural rule, not a learned preference.</p>
+    <div id="actions"></div>
+  </section>
+
+  <!-- 4. retry storm -->
+  <section>
+    <h2>Retry storm — before / after</h2>
+    <p class="note">The retry loop was deliberately built without a cap first. Every
+      polling cycle re-queued anything that hadn't succeeded, so the storm
+      concentrated on transactions that could <em>never</em> succeed. Fixed with a
+      per-transaction budget and exponential backoff.</p>
+    <div class="storm" id="storm"></div>
+    <div class="verdict" id="storm-verdict"></div>
+  </section>
+
+  <!-- 5. feed -->
+  <section>
+    <h2>Live decision feed</h2>
+    <p class="note">One row per transaction. <strong>Click any row</strong> to see why
+      the agent decided what it did — the grounded error-code meaning, the full
+      confidence vector, and the generated explanation.</p>
+    <div class="controls" style="margin-bottom:12px">
+      <select id="f-action"><option value="">All actions</option></select>
+      <select id="f-cat"><option value="">All categories</option></select>
+      <span id="feed-count" class="sub"></span>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Transaction</th><th>Method</th><th class="num">Amount</th>
+        <th>Diagnosis</th><th class="num">P(recovery)</th><th>Action</th>
+      </tr></thead>
+      <tbody id="feed"></tbody>
+    </table>
+  </section>
+
+</div>
+
+<script>
+// ---------------------------------------------------------------- helpers ---
+const $ = s => document.querySelector(s);
+const money = n => n == null ? "—" :
+  "₹" + Math.round(n).toLocaleString("en-IN");
+const pct = n => n == null ? "—" : (n * 100).toFixed(1) + "%";
+const titled = s => (s || "").replace(/_/g, " ");
+
+const CAT_COLOR = { hard_decline: "--hard", soft_decline: "--soft",
+                    customer_dropoff: "--drop", fraud_block: "--fraud" };
+const ACT_COLOR = { auto_retry_now: "--auto", retry_later: "--later",
+                    customer_nudge: "--nudge", escalate: "--esc", no_action: "--none" };
+const CAT_ORDER = ["hard_decline", "soft_decline", "customer_dropoff", "fraud_block"];
+const ACT_ORDER = ["auto_retry_now", "retry_later", "customer_nudge", "escalate", "no_action"];
+const cssv = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+async function getJSON(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) throw new Error(`${url} -> ${r.status}`);
+  return r.json();
+}
+
+let FEED = [];
+let FEED_TOTAL = 0;
+
+// Feature columns keyed by transaction_id, from the /simulate/seed response.
+// The feed itself is the audit log (/decisions), which carries the explanation
+// and the grounded code meaning but NOT the model inputs -- and POST /decide
+// needs those inputs. So the two are joined here rather than widening the audit
+// record with fields no auditor would want.
+let FEATURES = {};
+
+// The stats sections already summarise the whole batch. The feed is for reading
+// individual decisions, so cap it -- rendering 1000 rows (each with a hidden
+// detail row) produced a 20,000px page nobody can navigate.
+const FEED_LIMIT = 60;
+
+// ------------------------------------------------------------- rendering ---
+function renderHeadline(rev) {
+  $("#recovered").textContent = money(rev.actual_recovered_value);
+  $("#recovered-n").textContent = rev.actual_recovered_count ?? "—";
+  $("#expected").textContent = money(rev.expected_recovered_value);
+  $("#failed").textContent = money(rev.total_failed_value);
+  $("#acted").textContent = `${rev.acted_on_count} txns · ${money(rev.acted_on_value)}`;
+  $("#rate").textContent = rev.acted_on_count
+    ? pct(rev.actual_recovered_count / rev.acted_on_count) : "—";
+}
+
+function renderBreakdown(b) {
+  const byMethod = b.category_by_method || {};
+  const cats = CAT_ORDER.filter(c => (b.by_category || {})[c] != null);
+  const max = Math.max(...cats.map(c => b.by_category[c]), 1);
+
+  $("#breakdown").innerHTML = cats.map(cat => {
+    const card = (byMethod.card || {})[cat] || 0;
+    const upi = (byMethod.upi || {})[cat] || 0;
+    const total = card + upi;
+    // widths are a share of the largest category, so bars stay comparable
+    const w = v => (v / max) * 100;
+    return `<div class="row">
+      <div class="lbl"><span class="chip" style="border-color:${cssv("--" + CAT_COLOR[cat].slice(2))};
+        color:${cssv(CAT_COLOR[cat])}">${titled(cat)}</span></div>
+      <div class="track">
+        <span style="width:${w(card)}%;background:var(--card-c)" title="card: ${card}"></span>
+        <span style="width:${w(upi)}%;background:var(--upi-c)" title="UPI: ${upi}"></span>
+      </div>
+      <div class="amt">${total} &nbsp;<span style="color:var(--card-c)">${card}</span>/<span style="color:var(--upi-c)">${upi}</span></div>
+    </div>`;
+  }).join("");
+
+  // Name the skew explicitly rather than leaving a judge to infer it.
+  const share = (m, c) => {
+    const tot = Object.values(byMethod[m] || {}).reduce((a, x) => a + x, 0) || 1;
+    return ((byMethod[m] || {})[c] || 0) / tot;
+  };
+  $("#skew").innerHTML =
+    `Cards are <strong>${pct(share("card", "hard_decline"))}</strong> hard declines vs
+     <strong>${pct(share("upi", "hard_decline"))}</strong> on UPI; UPI is
+     <strong>${pct(share("upi", "customer_dropoff"))}</strong> customer drop-off vs
+     <strong>${pct(share("card", "customer_dropoff"))}</strong> on cards. That split is
+     designed into the data and the classifier has to learn around it.`;
+}
+
+function renderActions(b) {
+  const acts = ACT_ORDER.filter(a => (b.by_action || {})[a] != null);
+  const max = Math.max(...acts.map(a => b.by_action[a]), 1);
+  const total = acts.reduce((s, a) => s + b.by_action[a], 0) || 1;
+
+  $("#actions").innerHTML = acts.map(a => {
+    const n = b.by_action[a];
+    return `<div class="row">
+      <div class="lbl">${titled(a)}</div>
+      <div class="track"><span style="width:${(n / max) * 100}%;background:var(${ACT_COLOR[a]})"></span></div>
+      <div class="amt">${n} · ${pct(n / total)}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderStorm(s) {
+  const b = s.before, a = s.after;
+  const metric = (title, bv, av, fmt = x => x.toLocaleString()) => {
+    const m = Math.max(bv, av, 1);
+    return `<div class="metric">
+      <div class="t">${title}</div>
+      <div class="pair"><span class="b">${fmt(bv)}</span><span class="arw">→</span><span class="a">${fmt(av)}</span></div>
+      <div class="minibars">
+        <div class="minibar" style="width:${(bv / m) * 100}%;background:var(--before)"></div>
+        <div class="minibar" style="width:${(av / m) * 100}%;background:var(--after)"></div>
+      </div>
+    </div>`;
+  };
+
+  $("#storm").innerHTML = [
+    metric("Total retry attempts", b.total_attempts, a.total_attempts),
+    metric("Attempts that could never succeed", b.wasted_attempts, a.wasted_attempts),
+    metric("Worst case on one transaction", b.attempts_per_txn_max, a.attempts_per_txn_max),
+    metric("Still queued at end", b.still_queued_at_end, a.still_queued_at_end),
+    metric("Transactions recovered", b.recovered, a.recovered),
+  ].join("");
+
+  const cut = Math.round((s.attempt_reduction || 0) * 100);
+  const lostValue = b.recovered_value - a.recovered_value;
+  $("#storm-verdict").innerHTML =
+    `<strong>Retry traffic cut ${cut}%</strong> (${b.total_attempts.toLocaleString()} →
+     ${a.total_attempts.toLocaleString()} attempts), worst case
+     ${b.attempts_per_txn_max} → ${a.attempts_per_txn_max} attempts on a single transaction.
+     The uncapped loop left <strong>${b.still_queued_at_end}</strong> transactions retrying
+     forever; the capped one terminates.
+     <div class="caveat">Honest cost: the budget gives up
+     ${Math.abs(s.recovered_delta)} recoveries (${money(lostValue)}) to save that traffic.
+     Three attempts recover ~94% of what's recoverable; the uncapped loop eventually
+     gets ~100% by hammering the issuer indefinitely — and 84.5% of its attempts went
+     to transactions that could never succeed.</div>`;
+}
+
+function renderFeed() {
+  const fa = $("#f-action").value, fc = $("#f-cat").value;
+  const rows = FEED.filter(d =>
+    (!fa || d.action === fa) && (!fc || d.predicted_category === fc));
+
+  $("#feed-count").textContent =
+    `showing ${rows.length} of the ${FEED_TOTAL.toLocaleString()} most recent decisions`
+    + (FEED_TOTAL > FEED.length ? ` (latest ${FEED.length} loaded)` : "");
+
+  if (!rows.length) {
+    $("#feed").innerHTML = `<tr><td colspan="6" class="empty">No transactions match.</td></tr>`;
+    return;
+  }
+
+  $("#feed").innerHTML = rows.map((d, i) => {
+    const conf = d.category_probabilities
+      ? Math.max(...Object.values(d.category_probabilities)) : null;
+    return `<tr class="head ${d.fraud_blocked ? "fraudrow" : ""}" data-i="${i}">
+        <td class="mono">${d.transaction_id ?? "—"}</td>
+        <td>${(d.payment_method || "").toUpperCase()}</td>
+        <td class="num">${money(d.amount)}</td>
+        <td><span class="badge" style="background:rgba(255,255,255,.06);color:var(${CAT_COLOR[d.predicted_category] || "--none"})">
+            ${titled(d.predicted_category)}</span>
+            <span class="muted" style="font-size:11.5px">${conf != null ? pct(conf) : ""}</span></td>
+        <td class="num">${d.fraud_blocked
+            ? '<span class="muted" title="never computed for fraud">not scored</span>'
+            : pct(d.recovery_probability)}</td>
+        <td><span class="badge" style="background:var(${ACT_COLOR[d.action] || "--none"});color:#08130f">
+            ${titled(d.action)}</span></td>
+      </tr>
+      <tr class="why" id="why-${i}" hidden><td colspan="6"><div class="why-inner">
+        <h4>Why</h4>
+        <p>${d.explanation || '<span class="muted">No explanation recorded.</span>'}</p>
+        <h4>Grounded in the bank's actual response</h4>
+        <p class="grounded">${d.error_code
+            ? `<span class="mono">${d.error_code}</span> — ` : ""}${d.error_code_meaning || "—"}</p>
+        <h4>Diagnosis confidence</h4>
+        <div class="probs">${Object.entries(d.category_probabilities || {})
+            .sort((x, y) => y[1] - x[1])
+            .map(([k, v]) => `<span class="prob" style="color:var(${CAT_COLOR[k] || "--none"})">
+                 ${titled(k)} <b>${pct(v)}</b></span>`).join("")}</div>
+        ${d.fraud_blocked
+          ? `<p class="muted">Fraud-blocked: the recovery model and the language model were
+             never called for this transaction. No recovery estimate exists to display.</p>`
+          : `<button data-live="${i}">Explain live with Gemini</button>
+             <span class="muted" style="font-size:12px">&nbsp;one API call — the feed above uses
+             offline templates to protect the free-tier quota</span>
+             <div id="live-${i}" hidden></div>`}
+      </div></td></tr>`;
+  }).join("");
+
+  $("#feed").querySelectorAll("tr.head").forEach(tr => {
+    tr.addEventListener("click", () => {
+      const el = $("#why-" + tr.dataset.i);
+      el.hidden = !el.hidden;
+    });
+  });
+  $("#feed").querySelectorAll("[data-live]").forEach(btn => {
+    btn.addEventListener("click", e => { e.stopPropagation(); explainLive(btn, rows[+btn.dataset.live]); });
+  });
+}
+
+// The one place the dashboard may spend live provider quota, and only when a
+// human clicks. Everything else is served from offline templates.
+async function explainLive(btn, d) {
+  const out = $("#live-" + btn.dataset.live);
+  out.hidden = false;
+  out.className = "live-out";
+  out.textContent = "Asking Gemini…";
+  btn.disabled = true;
+  try {
+    const src = FEATURES[d.transaction_id];
+    if (!src) throw new Error("feature data unavailable - re-run the simulation");
+    const payload = {};
+    for (const k of ["transaction_id", "amount", "payment_method", "time_of_day",
+      "day_of_week", "retry_count", "customer_txn_history_count",
+      "customer_past_failure_rate", "seconds_to_failure", "merchant_category",
+      "error_code", "card_network", "issuing_bank", "is_3ds_flow",
+      "card_age_months", "psp_app", "time_since_app_switch",
+      "daily_limit_utilization"]) {
+      if (src[k] !== undefined && src[k] !== null) payload[k] = src[k];
+    }
+    const res = await getJSON("/decide", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    out.innerHTML = `<div class="muted" style="font-size:11.5px;margin-bottom:5px">
+      live response</div>${res.explanation}`;
+  } catch (err) {
+    out.innerHTML = `<span class="err">Live call failed: ${err.message}.</span>
+      <span class="muted">The grounded template above still stands — explanations
+      are narration, decisions are not.</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function fillFilters() {
+  const acts = [...new Set(FEED.map(d => d.action))].sort(
+    (a, b) => ACT_ORDER.indexOf(a) - ACT_ORDER.indexOf(b));
+  const cats = [...new Set(FEED.map(d => d.predicted_category))].sort(
+    (a, b) => CAT_ORDER.indexOf(a) - CAT_ORDER.indexOf(b));
+  $("#f-action").innerHTML = `<option value="">All actions</option>` +
+    acts.map(a => `<option value="${a}">${titled(a)}</option>`).join("");
+  $("#f-cat").innerHTML = `<option value="">All categories</option>` +
+    cats.map(c => `<option value="${c}">${titled(c)}</option>`).join("");
+}
+
+// ------------------------------------------------------------------ load ---
+async function run() {
+  const n = +$("#batch").value;
+  const btn = $("#run");
+  btn.disabled = true;
+  $("#status").textContent = `Running ${n} transactions…`;
+
+  try {
+    // seed first: it populates the audit feed the decision table reads
+    const seeded = await getJSON(`/simulate/seed?n=${n}`, { method: "POST" });
+    FEATURES = {};
+    for (const row of seeded.decisions || []) FEATURES[row.transaction_id] = row;
+    const [rev, brk, feed] = await Promise.all([
+      getJSON(`/stats/recovered-revenue?n=${n}`),
+      getJSON(`/stats/breakdown?n=${n}`),
+      getJSON(`/decisions?limit=${FEED_LIMIT}`),
+    ]);
+    renderHeadline(rev);
+    renderBreakdown(brk);
+    renderActions(brk);
+    FEED = feed.decisions || [];
+    FEED_TOTAL = feed.total || FEED.length;
+    fillFilters();
+    renderFeed();
+    $("#status").textContent = `${n} transactions processed`;
+  } catch (err) {
+    $("#status").innerHTML = `<span class="err">${err.message}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function loadStorm() {
+  try {
+    renderStorm(await getJSON("/reports/retry-storm"));
+  } catch {
+    $("#storm-verdict").innerHTML =
+      `<span class="muted">No retry-storm report yet. Run
+       <span class="mono">python scripts/retry_storm_demo.py</span> and reload.</span>`;
+  }
+}
+
+$("#run").addEventListener("click", run);
+$("#f-action").addEventListener("change", renderFeed);
+$("#f-cat").addEventListener("change", renderFeed);
+loadStorm();
+run();
+</script>
+</body>
+</html>

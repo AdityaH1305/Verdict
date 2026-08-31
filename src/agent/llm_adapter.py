@@ -38,6 +38,7 @@ interface here in the first place, and it is now demonstrated rather than
 merely claimed.
 """
 
+import math
 import os
 import sys
 from abc import ABC, abstractmethod
@@ -145,14 +146,24 @@ def _build_facts(transaction: dict, category: str, recovery_prob: float,
         f"Retries already attempted: {transaction.get('retry_count', 0)}",
     ]
 
-    if grounded:
-        # The whole point: the code's meaning comes from the verified taxonomy,
-        # not from whatever the model happens to associate with the string.
-        lines.append(f"Error code returned by the bank: {code if code else 'none'}")
-        lines.append(f"VERIFIED MEANING OF THIS ERROR CODE: {describe(code, method)}")
+    # An absent code is a fact about the transaction, not a code whose value is
+    # the word "none". Rendering it that way made the model write: 'the payment
+    # failed with the error code "none"'. Note NaN is truthy, so a pandas-missing
+    # value has to be caught explicitly or it renders as "nan".
+    has_code = not (code is None or (isinstance(code, float) and math.isnan(code))
+                    or str(code).strip().lower() in ("", "nan", "none"))
+
+    if has_code:
+        lines.append(f"Error code returned by the bank: {code}")
+        if grounded:
+            # The whole point: the code's meaning comes from the verified
+            # taxonomy, not from whatever the model associates with the string.
+            lines.append(f"VERIFIED MEANING OF THIS ERROR CODE: {describe(code, method)}")
+        # else: Candidate 3 reproduction -- bare code, no grounding.
     else:
-        # Candidate 3 reproduction: bare code, no grounding.
-        lines.append(f"Error code returned by the bank: {code if code else 'none'}")
+        lines.append("The bank returned NO error code for this transaction.")
+        if grounded:
+            lines.append(f"WHAT THAT ABSENCE MEANS: {describe(None, method)}")
 
     return "\n".join(lines)
 

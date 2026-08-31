@@ -114,14 +114,15 @@ src/
   models/           # failure classifier + recovery success model
   agent/            # decision logic + LLM adapter interface
   api/              # backend serving layer
-  dashboard/        # frontend
+  dashboard/        # single-file dashboard (no build step), served at GET /
+  error_taxonomy.py # grounded error_code -> meaning, what the LLM is held to
   features.py       # shared feature spec + encoder (one definition, both models)
   paths.py          # canonical project paths
 models/           # saved trained model artifacts
-reports/          # confusion matrix, calibration curve, metrics.json
+reports/          # confusion matrix, calibration curve, action mix, retry storm
 notebooks/        # ad-hoc EDA
 docs/             # architecture doc, decisions log, "what broke" writeup
-scripts/          # prepare_data.py, train.py
+scripts/          # prepare_data, train, evaluate_agent, retry_storm_demo, check_llm
 tests/            # guard tests for the architectural hard rules
 ```
 
@@ -141,16 +142,27 @@ python scripts/retry_storm_demo.py                    # -> retry-storm before/af
 pytest tests/
 ```
 
-Then the API:
+Then the API and dashboard — one command, one port:
 
 ```bash
 uvicorn src.api.main:app --reload
 ```
 
+Open **http://localhost:8000**. The dashboard is a single self-contained HTML
+file with no build step, no `npm install`, and no CDN, served by FastAPI itself:
+recovered-revenue headline, failure breakdown split card vs UPI, action mix, the
+retry-storm before/after, and a live decision feed where any row expands into the
+grounded "why".
+
 `POST /decide` returns a decision for one failed transaction; `POST /simulate/seed`
 replays held-out transactions for the demo; `GET /stats/breakdown` and
 `GET /stats/recovered-revenue` back the dashboard; `GET /decisions` is the audit
-feed.
+feed; `GET /reports/retry-storm` serves the before/after numbers.
+
+Normal dashboard use makes **zero** live-provider calls — everything that loops
+is served by an offline template adapter, with live Gemini reserved for the
+opt-in "Explain live with Gemini" button on a single expanded row. A spy adapter
+in the test suite fails the build if that ever stops being true.
 
 For LLM explanations, copy `.env.example` to `.env` and set `GEMINI_API_KEY`
 (free tier — [get one here](https://aistudio.google.com/apikey)), then:
@@ -243,7 +255,7 @@ construction.
 - [x] Recovery success model (Model 2)
 - [x] Agent decision logic + LLM adapter
 - [x] Backend API
-- [ ] Dashboard
+- [x] Dashboard
 - [ ] Deployment
 - [ ] Architecture doc + "what broke" writeup
 - [ ] Pitch video
