@@ -547,6 +547,51 @@ The distinction is the point: **determinism is valuable where numbers are
 compared across runs, and actively misleading where a demo implies live
 behaviour.**
 
+### Audit for the same bug class elsewhere
+
+Swept the API, dashboard, agent, and scripts for `.head()`, fixed slices,
+hardcoded limits, and reused samples. Most were correct, and it is worth
+recording *why* so nobody "fixes" them later:
+
+| Site | Verdict |
+|---|---|
+| `generate_transactions.py` — `sample(frac=1, random_state=RNG_SEED)` | **Correct.** Shuffling the generated dataset must be reproducible. |
+| `retry_simulator.py` — `seed=42` on both uncapped and capped runs | **Correct, and load-bearing.** The same seed is what makes it a controlled before/after; different seeds would confound the comparison with different retry outcomes. |
+| `failure_classifier.py` — `.head(8)` on feature importances | **Correct.** A display choice for the top-8 print. |
+| `/decisions` — `log[-limit:]` reversed | **Correct.** "Most recent N" is the intended feed semantics. |
+| `/reports/retry-storm` | **Correct.** Serves a committed report; it *should* be byte-stable, and recomputing per request would drift from the numbers quoted in the docs. |
+| Dashboard `FEED_LIMIT = 60` | **Correct.** A display cap; the stats panels still cover the whole batch. |
+| `STATE["pool"]` CSV cache | **Correct.** The file does not change while the server runs. |
+
+**One genuine latent defect found and fixed:** `_current_batch()` resampled when
+`len(batch) != n`. Two stats calls with different `n` in one render would
+silently replace the stored batch, leaving the panels describing different
+transaction sets and the feed a third. The dashboard uses one `n` so it was
+never hit — the same "looks fine, structurally fragile" shape as the original.
+The stored batch now wins regardless of `n`; `/simulate/seed` is the only way to
+choose a new one.
+
+### The general safeguard
+
+The `.head(n)` bug survived 71 passing tests because **every test asserted on the
+shape of one response**. Nothing compared two responses to each other, so an
+endpoint that could only ever return one answer looked perfectly healthy.
+
+`tests/test_output_variability.py` tests the property that class of bug violates
+— *does calling the same thing twice produce what it should?* — in both
+directions: `VARYING` endpoints must differ across calls, `STABLE` ones must not.
+
+The load-bearing part is `test_every_route_is_classified`. A hand-maintained list
+would rot the moment someone added an endpoint, so it walks the app's own route
+table and fails if a route appears in neither bucket (nor in `DERIVED`, for
+endpoints whose variability is governed by another). A new endpoint cannot
+silently escape the question "should this vary?" — which is exactly how the
+original bug survived.
+
+Validated by reverting `_sample_batch` to `.head(n)` and confirming the suite
+goes red with a message naming the bug class, then restoring it. A regression
+test never seen failing is not yet a regression test.
+
 One consequence worth noting: once the batch became a random sample, the stats
 panels had to read the *same* sample. Re-sampling per endpoint would have made
 the headline revenue describe a different set of transactions than the rows

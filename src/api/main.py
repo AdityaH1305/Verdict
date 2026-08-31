@@ -131,9 +131,17 @@ def _current_batch(n: int, seed: Optional[int] = None) -> pd.DataFrame:
     rows underneath it. So /simulate/seed stores its sample and the stats read
     it back; a direct hit on /stats/* with no simulation yet falls back to
     drawing (and storing) one.
+
+    The stored batch wins REGARDLESS of `n`. An earlier version resampled when
+    `len(batch) != n`, which meant calling two stats endpoints with different
+    `n` silently replaced the batch mid-render -- the panels would then describe
+    different transaction sets, and the feed would describe a third. `n` is a
+    request for a batch size when none exists yet, not a filter on an existing
+    one; callers get the real size back in the response's `n` field, and
+    /simulate/seed is the way to choose a new batch.
     """
     batch = STATE.get("batch")
-    if batch is None or len(batch) != n:
+    if batch is None:
         batch = _sample_batch(n, seed)
         STATE["batch"] = batch
     return batch
