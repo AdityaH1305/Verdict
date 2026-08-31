@@ -6,6 +6,13 @@ single undifferentiated bucket.
 
 Built for the Razorpay AI Buildathon (deadline: Sept 5, 2026).
 
+## Live demo
+
+**[revenue-recovery-agent-ewhj.onrender.com](https://revenue-recovery-agent-ewhj.onrender.com)**
+
+Hosted on Render's free tier, so the first load after idle may take up to 50
+seconds while the service wakes up — reload if it times out once.
+
 ## The problem
 
 Payment gateways lose meaningful revenue to failed transactions, but not all
