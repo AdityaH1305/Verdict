@@ -464,8 +464,20 @@ async function explainLive(btn, d) {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    out.innerHTML = `<div class="muted" style="font-size:11.5px;margin-bottom:5px">
-      live response</div>${res.explanation}`;
+    // The adapter degrades to a grounded template when the free-tier quota is
+    // spent, and marks that inline. Showing the raw marker under a heading that
+    // says "live response" reads as broken to anyone who doesn't know the
+    // backstory -- so label it plainly instead of leaking the diagnostic.
+    // Honest, not hidden: it says the model was unavailable, and says why it
+    // doesn't matter.
+    const fellBack = /used template\)\s*$/.test(res.explanation);
+    const prose = res.explanation.replace(/\s*\([^)]*used template\)\s*$/, "");
+    out.innerHTML = fellBack
+      ? `<div class="muted" style="font-size:11.5px;margin-bottom:5px">
+           grounded explanation &middot; live model unavailable (free-tier quota)
+           &mdash; the decision is unchanged</div>${prose}`
+      : `<div class="muted" style="font-size:11.5px;margin-bottom:5px">
+           live response</div>${prose}`;
   } catch (err) {
     out.innerHTML = `<span class="err">Live call failed: ${err.message}.</span>
       <span class="muted">The grounded template above still stands — explanations

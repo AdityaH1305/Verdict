@@ -1,0 +1,46 @@
+# Render blueprint. Deploy: push this repo to GitHub, then on Render choose
+# "New +" -> "Blueprint" and point it at the repo. Render reads this file.
+#
+# WHY A BUILD STEP RATHER THAN COMMITTED ARTIFACTS
+#
+# The trained models (7.6 MB of .pkl) and the generated dataset are gitignored,
+# so a git-based deploy receives NEITHER. Without the build step below the app
+# boots degraded: /health reports "model artifacts not found" and every decision
+# endpoint returns 503.
+#
+# The fix is to rebuild them on the host rather than commit them. Every stage is
+# seeded (RNG_SEED / RANDOM_SEED), so the host reproduces this machine's numbers
+# exactly -- verified during the Day 5 cold start, which got an identical
+# +0.1458 macro-F1 lift and identical action counts from a fresh clone.
+# Committing the pickles instead would bloat the repo AND pin the artifacts to
+# one exact xgboost/scikit-learn build, which is how "unpickling failed on the
+# server" happens.
+#
+# Note what is NOT rebuilt: data/demo/demo_batch.csv is committed and used
+# as-is. Regenerating it on the host would defeat its purpose -- the whole point
+# is that the pitch numbers cannot drift.
+
+services:
+  - type: web
+    name: revenue-recovery-agent
+    runtime: python
+    plan: free
+    region: singapore          # closest to the judging audience
+    buildCommand: |
+      pip install -r requirements.txt
+      python src/data_generation/generate_transactions.py
+      python scripts/prepare_data.py
+      python scripts/train.py
+      python scripts/retry_storm_demo.py
+    # $PORT is injected by Render; 0.0.0.0 is required or the health check
+    # cannot reach the process.
+    startCommand: uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      # Set the real value in Render's dashboard (Environment -> Add Secret
+      # File / Environment Variable). NEVER commit it.
+      # sync: false means "prompt me for this, don't store it in the repo".
+      - key: GEMINI_API_KEY
+        sync: false

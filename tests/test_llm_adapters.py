@@ -8,6 +8,7 @@ rather than taking down the decision endpoint.
 """
 
 import os
+import re
 import sys
 
 import pytest
@@ -136,6 +137,36 @@ class TestGeminiAdapter:
 
         instruction = adapter._client.models.last_kwargs["config"].system_instruction
         assert "cite the bank's error code" in instruction.lower()
+
+    @pytest.mark.parametrize("exc,text,finish", [
+        (_api_error(429), None, "STOP"),
+        (_api_error(500), None, "STOP"),
+        (None, "partial…", "FinishReason.MAX_TOKENS"),
+    ])
+    def test_fallbacks_end_with_the_marker_the_dashboard_looks_for(self, exc, text, finish):
+        """
+        Contract with src/dashboard/index.html.
+
+        The dashboard detects a degraded explanation by the trailing
+        "(… used template)" marker, strips it, and relabels the panel so a
+        viewer sees "live model unavailable" rather than a raw diagnostic under
+        a heading that says "live response". If the marker format changes here,
+        that relabelling silently stops working and the demo looks broken.
+        """
+        adapter = _adapter_with(raise_exc=exc, text=text, finish_reason=finish)
+        out = adapter.generate_explanation(TXN, "soft_decline", 0.55, "auto_retry_now")
+
+        assert out.rstrip().endswith("used template)"), out
+        # and the prose survives stripping as a complete, grounded explanation
+        stripped = re.sub(r"\s*\([^)]*used template\)\s*$", "", out)
+        assert "Debit timed out on the remitter side" in stripped
+        assert stripped.rstrip().endswith(".")
+
+    def test_successful_calls_carry_no_marker(self):
+        """The complement -- a real response must not be relabelled as degraded."""
+        adapter = _adapter_with(text="The bank did not respond in time (U67).")
+        out = adapter.generate_explanation(TXN, "soft_decline", 0.55, "auto_retry_now")
+        assert "used template" not in out
 
     def test_refuses_fraud_before_any_api_call(self):
         adapter = _adapter_with(text="should never be produced")

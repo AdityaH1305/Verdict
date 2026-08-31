@@ -117,5 +117,66 @@ terminology.
 
 ## Actual story used in submission
 
-(Fill in after the build — which one happened, what the real numbers/logs
-were, and the exact fix.)
+**Chosen: "our headline metric was lying to us" — the Day 2 discovery that Model 1
+was a lookup table.**
+
+Note this was *not* one of the three candidates designed in advance. It is fully
+documented in `decisions.md` ("Day 2 — why the data was regenerated"); it is
+picked here because it is the strongest of the real ones, for reasons at the
+bottom of this section.
+
+### The paragraph for submission
+
+> Before training the failure classifier, I checked whether the problem was
+> actually learnable. It wasn't. **7,057 of 8,000 rows (88%) had an error code
+> that mapped to exactly one failure category** — so the "classifier" scored
+> **96.6% accuracy** by memorising a lookup table, versus 60.8% without the code
+> and a 33.8% majority-class baseline. The number looked excellent and meant
+> nothing, and it invalidated the project's central claim that diagnosing a
+> payment failure is a real problem. The cause was mine: my data generator gave
+> each failure category a private, disjoint list of error codes. Real payment
+> data is messier — `05` "do not honor" is a deliberately opaque catch-all
+> issuers use to mask both fraud suspicion and insufficient funds; an issuer
+> timeout (`91`, `U67`) is exactly where a stalled *customer* hides behind a
+> *system* code; a wrong UPI PIN (`ZM`) often ends in the customer simply giving
+> up. I rebuilt the generator so categories emit from *overlapping* code
+> distributions, leaving genuinely unambiguous codes (`51` insufficient funds,
+> `54` expired card) near-pure — the goal was realism, not uniform mud.
+> Deterministic rows fell from 88% to 42% and the naive-lookup ceiling from 96.4%
+> to 80.4%. The second-order problem was subtler: overlap alone would just have
+> added irreducible noise that no model could beat the lookup on, so the overlap
+> had to be *resolvable from behaviour*. That meant sharpening
+> category-conditional feature distributions and adding a `seconds_to_failure`
+> dwell-time signal, without which card drop-off versus soft decline on code `91`
+> was structurally unresolvable. The retrained model reaches **94.3% accuracy
+> against an 80.9% lookup baseline** — a real 13.4-point lift instead of a
+> memorised one — and **82% of its remaining errors fall on the single genuinely
+> ambiguous pair**, `soft_decline` vs `customer_dropoff`, which is exactly where
+> a human analyst would also hesitate. The permanent fix is a guardrail rather
+> than a one-off correction: `scripts/train.py` now computes the naive lookup
+> baseline on every run and **fails the build if the model ever stops beating
+> it**. A model that cannot outperform ten lines of dictionary lookup should not
+> be allowed to call itself a model.
+
+### Why this one over the others
+
+| Candidate | Why not chosen |
+|---|---|
+| **Retry storm** (Candidate 2) | Genuinely happened and has the best *visuals* — 3,025 → 1,062 attempts, 84.5% of them on transactions that could never succeed. But it was **designed to break on purpose**, which a judge can reasonably discount. It stays in the pitch as the demo moment, not the "what broke" story. |
+| **`.head(n)` sampling bug** | Strong runner-up, and the best story about *testing blind spots*: the demo replayed one byte-identical batch forever and **71 passing tests missed it**, because every test asserted on the shape of one response and none compared two responses to each other. Kept as the answer to "what else went wrong?" |
+| **Grounding-checker bug** | Elegant — the checker had the exact bug class it existed to catch, matching four spellings of "timeout" while claiming to check the concept. Too inside-baseball for five minutes. |
+| **`joblib` dependency gap** | Real and worth a sentence, but too small to carry the segment. |
+
+The lookup-table story wins because it is the only one where **a result that
+looked good was wrong**, it goes straight at the project's core claim, the fix
+was principled domain modelling rather than a patch, and it ended in a permanent
+automated guardrail. The others are bugs; this one is a judgement.
+
+### Numbers to have on hand if questioned
+
+- 7,057 / 8,000 rows (88%) deterministic before; 42% after
+- 96.6% "accuracy" before → naive lookup ceiling 96.4% → 80.4% after regeneration
+- Final: model 94.3% / macro-F1 0.945 vs lookup 80.9% / macro-F1 0.799
+- 82% of residual errors on the `soft_decline` ↔ `customer_dropoff` pair
+- `hard_decline` and `fraud_block` recall both 0.99 — the easy classes stayed easy,
+  which is correct: insufficient funds genuinely *is* unambiguous

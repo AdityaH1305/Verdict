@@ -121,7 +121,7 @@ src/
   paths.py          # canonical project paths
 models/           # saved trained model artifacts (created by train.py)
 reports/          # confusion matrix, calibration curve, action mix, retry storm
-docs/             # architecture doc, decisions log, "what broke" writeup
+docs/             # architecture doc, decisions log, deployment, "what broke"
 scripts/          # prepare_data, train, evaluate_agent, retry_storm_demo,
                   #   make_demo_batch, check_llm
 tests/            # guard tests for the architectural hard rules
@@ -304,7 +304,7 @@ construction.
 - [x] Backend API
 - [x] Dashboard
 - [x] Integration + demo scenario
-- [ ] Deployment
+- [x] Deployment (config + verification; see docs/deployment.md)
 - [ ] Architecture doc + "what broke" writeup
 - [ ] Pitch video
 
