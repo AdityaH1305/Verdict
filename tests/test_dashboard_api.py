@@ -45,8 +45,13 @@ class ExplodingAdapter:
         )
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def client():
+    """
+    Module-scoped: the app's lifespan loads both XGBoost artifacts, which cost
+    ~3s. Per-test that dominated the suite. Nothing here mutates shared state
+    without restoring it, and every test seeds its own batch.
+    """
     with TestClient(api_main.app) as c:
         yield c
 
@@ -67,7 +72,7 @@ class TestQuotaSafety:
         original = api_main.STATE["agent"].adapter
         api_main.STATE["agent"].adapter = ExplodingAdapter()
         try:
-            assert client.post("/simulate/seed?n=25").status_code == 200
+            assert client.post("/simulate/seed?n=25&seed=1").status_code == 200
             assert client.get("/stats/breakdown?n=25").status_code == 200
             assert client.get("/stats/recovered-revenue?n=25").status_code == 200
             assert client.get("/decisions?limit=25").status_code == 200
@@ -82,14 +87,14 @@ class TestDecisionFeed:
         Regression: the batch path used to log explanation="" for every row,
         leaving the dashboard's "why" panel empty.
         """
-        client.post("/simulate/seed?n=25")
+        client.post("/simulate/seed?n=25&seed=1")
         decisions = client.get("/decisions?limit=25").json()["decisions"]
 
         assert decisions
         assert all(d["explanation"].strip() for d in decisions)
 
     def test_explanations_are_grounded_in_the_taxonomy(self, client):
-        client.post("/simulate/seed?n=40")
+        client.post("/simulate/seed?n=40&seed=1")
         decisions = client.get("/decisions?limit=40").json()["decisions"]
 
         coded = [d for d in decisions
@@ -99,7 +104,7 @@ class TestDecisionFeed:
         assert all(str(d["error_code"]) in d["explanation"] for d in coded)
 
     def test_fraud_rows_carry_the_hard_rule_wording_and_no_score(self, client):
-        client.post("/simulate/seed?n=60")
+        client.post("/simulate/seed?n=60&seed=1")
         decisions = client.get("/decisions?limit=60").json()["decisions"]
 
         fraud = [d for d in decisions if d["fraud_blocked"]]
@@ -108,6 +113,45 @@ class TestDecisionFeed:
             assert d["recovery_probability"] is None
             assert d["action"] == "no_action"
             assert "fraud" in d["explanation"].lower()
+
+    def test_each_run_draws_a_fresh_sample(self, client):
+        """
+        Regression: /simulate/seed used `.head(n)`, so "Run simulation" replayed
+        a byte-identical batch forever -- same transaction ids, same revenue,
+        every click.
+        """
+        runs = []
+        for _ in range(3):
+            client.post("/simulate/seed?n=80")
+            ids = [d["transaction_id"]
+                   for d in client.get("/decisions?limit=80").json()["decisions"]]
+            runs.append(tuple(ids))
+
+        assert len(set(runs)) == 3, "consecutive runs returned identical batches"
+        # sampling 80 of ~1600 should overlap only partially, never wholly
+        assert set(runs[0]) != set(runs[1])
+
+    def test_an_explicit_seed_is_reproducible(self, client):
+        """The escape hatch: scripted demos and tests can pin a batch."""
+        def batch():
+            client.post("/simulate/seed?n=60&seed=99")
+            return [d["transaction_id"]
+                    for d in client.get("/decisions?limit=60").json()["decisions"]]
+
+        assert batch() == batch()
+
+    def test_stats_describe_the_same_batch_as_the_feed(self, client):
+        """
+        Once the batch became a random sample, the stats panels had to read the
+        SAME sample -- otherwise the headline revenue would describe a different
+        set of transactions than the rows shown underneath it.
+        """
+        client.post("/simulate/seed?n=80")
+        feed = client.get("/decisions?limit=80").json()["decisions"]
+        stats = client.get("/stats/recovered-revenue?n=80").json()
+
+        feed_total = round(sum(d["amount"] for d in feed), 2)
+        assert feed_total == pytest.approx(stats["total_failed_value"], abs=0.01)
 
     def test_seed_resets_the_feed_between_runs(self, client):
         """

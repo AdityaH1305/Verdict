@@ -507,7 +507,12 @@ async function run() {
     FEED_TOTAL = feed.total || FEED.length;
     fillFilters();
     renderFeed();
-    $("#status").textContent = `${n} transactions processed`;
+    // Surface that this was a fresh draw -- the batch used to be a fixed slice,
+    // so "did that actually re-run?" is a fair question to answer in the UI.
+    const ids = FEED.map(d => d.transaction_id);
+    $("#status").innerHTML =
+      `${n} transactions &middot; <span class="mono">${ids[0] ?? "—"}</span> …
+       <span class="muted">new random sample</span>`;
   } catch (err) {
     $("#status").innerHTML = `<span class="err">${err.message}</span>`;
   } finally {

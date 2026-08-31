@@ -527,6 +527,32 @@ All three were invisible until something actually consumed the data:
    fact about the transaction, not a code whose value is the word "none". Also
    caught a latent bug on the same line: `NaN` is truthy, so a pandas-missing code
    would have rendered as `"nan"`.
+4. **"Run simulation" replayed the same fixed batch forever.** `/simulate/seed`
+   used `pd.read_csv(...).head(n)` — not a seeded RNG, just a deterministic
+   slice, so every click returned byte-identical transaction ids and revenue.
+   Only noticed because someone ran it repeatedly and compared.
+
+### Where randomness belongs (and where it does not)
+
+Fixed by sampling in the request path, with the seed *optional*:
+
+| Path | Seeding | Why |
+|---|---|---|
+| `POST /simulate/seed` (dashboard button) | none by default | a demo should show a fresh draw each click |
+| `POST /simulate/seed?seed=N` | pinned | scripted demos and content-asserting tests |
+| `scripts/train.py`, `prepare_data.py`, generator | fixed `RANDOM_SEED` | regression numbers must be reproducible |
+| `scripts/evaluate_agent.py`, `retry_storm_demo.py` | full test set, no sampling | unchanged and bit-for-bit stable |
+
+The distinction is the point: **determinism is valuable where numbers are
+compared across runs, and actively misleading where a demo implies live
+behaviour.**
+
+One consequence worth noting: once the batch became a random sample, the stats
+panels had to read the *same* sample. Re-sampling per endpoint would have made
+the headline revenue describe a different set of transactions than the rows
+underneath it, which is worse than the original bug. `/simulate/seed` now stores
+its sample and `/stats/*` read it back — asserted by
+`test_stats_describe_the_same_batch_as_the_feed`.
 
 ## Open decisions (fill in as you go)
 

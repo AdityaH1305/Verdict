@@ -85,6 +85,60 @@ def _bulk_agent() -> RecoveryAgent:
     return STATE["bulk_agent"]
 
 
+def _sample_batch(n: int, seed: Optional[int] = None) -> pd.DataFrame:
+    """
+    Draw a batch of failed transactions from the held-out set.
+
+    Randomly sampled, NOT the first n rows. `.head(n)` returned a byte-identical
+    batch on every call, so "Run simulation" replayed one fixed set forever.
+
+    `seed` is optional and exists for callers that need reproducibility (tests,
+    a scripted demo). Omitting it -- what the dashboard button does -- draws a
+    genuinely fresh sample each click. Seeding lives here, in the request path,
+    rather than in the pipeline: `scripts/train.py`, `prepare_data.py`, and the
+    data generator all keep their fixed seeds, because regression numbers have
+    to be reproducible.
+    """
+    df = _test_pool()
+    n = min(n, len(df))
+    return df.sample(n=n, random_state=seed).reset_index(drop=True)
+
+
+def _test_pool() -> pd.DataFrame:
+    """
+    The held-out set, read once and cached.
+
+    Sampling per request meant re-reading the CSV per request, which tripled the
+    test-suite runtime. The file does not change while the server is up.
+    """
+    pool = STATE.get("pool")
+    if pool is None:
+        if not os.path.exists(TEST_DATA):
+            raise HTTPException(status_code=503,
+                                detail="no test data; run scripts/prepare_data.py")
+        pool = pd.read_csv(TEST_DATA)
+        STATE["pool"] = pool
+    return pool
+
+
+def _current_batch(n: int, seed: Optional[int] = None) -> pd.DataFrame:
+    """
+    The batch the dashboard is currently looking at.
+
+    The stats panels must describe the SAME transactions as the decision feed.
+    Once the batch became a random sample, re-sampling per endpoint would have
+    made the headline revenue describe a different set of transactions than the
+    rows underneath it. So /simulate/seed stores its sample and the stats read
+    it back; a direct hit on /stats/* with no simulation yet falls back to
+    drawing (and storing) one.
+    """
+    batch = STATE.get("batch")
+    if batch is None or len(batch) != n:
+        batch = _sample_batch(n, seed)
+        STATE["batch"] = batch
+    return batch
+
+
 def _records(df: pd.DataFrame) -> List[Dict[str, Any]]:
     """
     DataFrame -> JSON-safe records.
@@ -211,29 +265,31 @@ def simulate_batch(request: BatchRequest):
 
 
 @app.post("/simulate/seed")
-def simulate_seed(n: int = Query(default=200, ge=1, le=2000)):
+def simulate_seed(n: int = Query(default=200, ge=1, le=2000),
+                   seed: Optional[int] = Query(default=None)):
     """
     Replay n held-out transactions through the agent.
 
     Backs the demo scenario -- "n failed transactions in, here is what the agent
     did" -- without needing a client to post a payload.
     """
-    if not os.path.exists(TEST_DATA):
-        raise HTTPException(status_code=503,
-                            detail="no test data; run scripts/prepare_data.py")
-
     agent = _bulk_agent()
     # Each seed is one self-contained replay, so start from a clean feed.
     # Without this the audit log accumulates across runs and the dashboard shows
     # several batches mixed together, with counts that no longer match the stats.
     agent.audit_log.clear()
 
-    df = pd.read_csv(TEST_DATA).head(n)
+    # Fresh random draw unless the caller asked for a specific seed, and stored
+    # so /stats/* describe this same batch rather than re-sampling their own.
+    df = _sample_batch(n, seed)
+    STATE["batch"] = df
+
     # bulk agent + template narration: populates the "why" in the feed without
     # spending provider quota on a whole batch
     decisions = agent.decide_batch(df, log=True, explain=True)
     return {
         "count": int(len(decisions)),
+        "seed": seed,
         "action_mix": decisions["action"].value_counts().to_dict(),
         "decisions": _records(decisions.drop(
             columns=["failure_category", "retry_success"], errors="ignore")),
@@ -241,12 +297,10 @@ def simulate_seed(n: int = Query(default=200, ge=1, le=2000)):
 
 
 @app.get("/stats/breakdown")
-def breakdown(n: int = Query(default=500, ge=1, le=2000)):
+def breakdown(n: int = Query(default=500, ge=1, le=2000),
+               seed: Optional[int] = Query(default=None)):
     """Failure-category and action breakdown for the dashboard charts."""
-    if not os.path.exists(TEST_DATA):
-        raise HTTPException(status_code=503, detail="no test data")
-
-    decisions = _bulk_agent().decide_batch(pd.read_csv(TEST_DATA).head(n))
+    decisions = _bulk_agent().decide_batch(_current_batch(n, seed))
     return {
         "n": int(len(decisions)),
         "by_category": decisions["predicted_category"].value_counts().to_dict(),
@@ -260,7 +314,8 @@ def breakdown(n: int = Query(default=500, ge=1, le=2000)):
 
 
 @app.get("/stats/recovered-revenue")
-def recovered_revenue(n: int = Query(default=500, ge=1, le=2000)):
+def recovered_revenue(n: int = Query(default=500, ge=1, le=2000),
+                       seed: Optional[int] = Query(default=None)):
     """
     Recovered-revenue estimate.
 
@@ -269,10 +324,7 @@ def recovered_revenue(n: int = Query(default=500, ge=1, le=2000)):
     ground-truth outcomes exist (held-out data), the realised figure is reported
     alongside it so the estimate can be checked rather than taken on faith.
     """
-    if not os.path.exists(TEST_DATA):
-        raise HTTPException(status_code=503, detail="no test data")
-
-    decisions = _bulk_agent().decide_batch(pd.read_csv(TEST_DATA).head(n))
+    decisions = _bulk_agent().decide_batch(_current_batch(n, seed))
     acting = {"auto_retry_now", "retry_later", "customer_nudge"}
     acted = decisions[decisions["action"].isin(acting)]
 

@@ -49,6 +49,21 @@ a language model at all.
 `tests/test_dashboard_api.py::TestQuotaSafety` enforces this with a spy adapter
 that fails the build if a looping endpoint ever touches the live provider.
 
+## Randomness
+
+**"Run simulation" draws a fresh random sample from the held-out set on every
+click** — different transactions, different revenue, different action mix. It
+originally used `.head(n)`, which replayed one byte-identical batch forever.
+
+Pass `?seed=N` to `/simulate/seed` to pin a batch for a scripted demo or a test.
+The pipeline scripts (`train.py`, `prepare_data.py`, the generator) keep their
+fixed seeds — regression numbers have to be reproducible, and
+`scripts/evaluate_agent.py` runs on the full test set so it is unaffected either
+way.
+
+The stats panels read the *same* sample the feed shows, so the headline revenue
+always describes the rows underneath it.
+
 ## Implementation notes
 
 - The feed is the **audit log** (`/decisions`), which carries the explanation and
