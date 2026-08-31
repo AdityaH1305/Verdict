@@ -27,13 +27,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from src.agent.llm_adapter import TemplateAdapter, get_adapter, load_env  # noqa: E402
 from src.agent.recovery_agent import RecoveryAgent  # noqa: E402
-from src.paths import REPORTS_DIR, TEST_DATA  # noqa: E402
+from src.paths import REPORTS_DIR, ROOT, TEST_DATA  # noqa: E402
 
 DASHBOARD_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dashboard"
 )
 DASHBOARD_INDEX = os.path.join(DASHBOARD_DIR, "index.html")
 RETRY_STORM_REPORT = os.path.join(REPORTS_DIR, "retry_storm.json")
+DEMO_BATCH_CSV = os.path.join(ROOT, "data", "demo", "demo_batch.csv")
 
 STATE: Dict[str, Any] = {"agent": None, "bulk_agent": None, "error": None}
 
@@ -298,6 +299,42 @@ def simulate_seed(n: int = Query(default=200, ge=1, le=2000),
     return {
         "count": int(len(decisions)),
         "seed": seed,
+        "action_mix": decisions["action"].value_counts().to_dict(),
+        "decisions": _records(decisions.drop(
+            columns=["failure_category", "retry_success"], errors="ignore")),
+    }
+
+
+@app.post("/simulate/demo")
+def simulate_demo():
+    """
+    Replay the pinned demo batch used for the pitch recording.
+
+    Identical machinery to /simulate/seed, but the rows come from a COMMITTED
+    file rather than a sample, so the numbers on screen are the numbers in the
+    script every single time. Built by scripts/make_demo_batch.py; provenance in
+    data/demo/demo_batch.json.
+
+    This is the one endpoint that is supposed to be perfectly repeatable -- the
+    opposite of the freshness requirement on /simulate/seed, and for the opposite
+    reason. Both are asserted in tests/test_output_variability.py.
+    """
+    if not os.path.exists(DEMO_BATCH_CSV):
+        raise HTTPException(
+            status_code=404,
+            detail="No pinned demo batch. Run: python scripts/make_demo_batch.py",
+        )
+
+    agent = _bulk_agent()
+    agent.audit_log.clear()
+
+    df = pd.read_csv(DEMO_BATCH_CSV)
+    STATE["batch"] = df          # so /stats/* describe the demo batch too
+    decisions = agent.decide_batch(df, log=True, explain=True)
+
+    return {
+        "count": int(len(decisions)),
+        "pinned": True,
         "action_mix": decisions["action"].value_counts().to_dict(),
         "decisions": _records(decisions.drop(
             columns=["failure_category", "retry_success"], errors="ignore")),

@@ -107,8 +107,9 @@ interactive path a demo actually drives.
 
 ```
 data/
-  raw/            # generated synthetic transaction data
-  processed/      # train/test splits, feature-engineered data
+  raw/            # generated synthetic transaction data (gitignored)
+  processed/      # train/test splits (gitignored)
+  demo/           # the pinned demo batch -- COMMITTED, see "Recording day"
 src/
   data_generation/  # synthetic data generator (cards + UPI, method-conditional)
   models/           # failure classifier + recovery success model
@@ -118,11 +119,11 @@ src/
   error_taxonomy.py # grounded error_code -> meaning, what the LLM is held to
   features.py       # shared feature spec + encoder (one definition, both models)
   paths.py          # canonical project paths
-models/           # saved trained model artifacts
+models/           # saved trained model artifacts (created by train.py)
 reports/          # confusion matrix, calibration curve, action mix, retry storm
-notebooks/        # ad-hoc EDA
 docs/             # architecture doc, decisions log, "what broke" writeup
-scripts/          # prepare_data, train, evaluate_agent, retry_storm_demo, check_llm
+scripts/          # prepare_data, train, evaluate_agent, retry_storm_demo,
+                  #   make_demo_batch, check_llm
 tests/            # guard tests for the architectural hard rules
 ```
 
@@ -132,7 +133,13 @@ into the dashboard and pitch video.
 
 ## Running it
 
+Verified end to end from a fresh clone into a fresh virtualenv — not just on a
+machine that already had everything. Python 3.11.
+
 ```bash
+python -m venv .venv && .venv/Scripts/activate     # Windows
+# python3 -m venv .venv && source .venv/bin/activate   # macOS / Linux
+
 pip install -r requirements.txt
 python src/data_generation/generate_transactions.py   # -> data/raw/transactions.csv
 python scripts/prepare_data.py                        # -> data/processed/{train,test}.csv
@@ -141,6 +148,9 @@ python scripts/evaluate_agent.py                      # -> action mix + revenue
 python scripts/retry_storm_demo.py                    # -> retry-storm before/after
 pytest tests/
 ```
+
+`data/`, `models/`, and `reports/` are created by those scripts — a fresh clone
+does not contain them, and does not need to.
 
 Then the API and dashboard — one command, one port:
 
@@ -173,6 +183,43 @@ python scripts/check_llm.py
 
 That makes one real call and verifies the answer stays grounded in the error-code
 taxonomy.
+
+## Recording day
+
+The dashboard opens on a **pinned demo batch** — 300 committed transactions in
+[`data/demo/demo_batch.csv`](data/demo/demo_batch.csv), not a random sample — so
+the numbers on screen are the numbers in the script, every run:
+
+| | |
+|---|---|
+| Recovered | **₹1,00,744** across 85 transactions |
+| Acted on | 161 of 300 |
+| Action mix | 42 auto-retry · 43 retry-later · 76 nudge · 4 escalate · 135 no-action |
+| Fraud-blocked | 33 (never scored, never narrated) |
+| Skew | 48.0% of cards are hard declines; 41.9% of UPI is customer drop-off |
+
+From a clone, that is:
+
+```bash
+pip install -r requirements.txt
+python src/data_generation/generate_transactions.py
+python scripts/prepare_data.py
+python scripts/train.py
+python scripts/retry_storm_demo.py    # populates the retry-storm panel
+uvicorn src.api.main:app
+```
+
+The batch was chosen by [`scripts/make_demo_batch.py`](scripts/make_demo_batch.py),
+which scans candidate samples for one that shows all five actions (including
+`escalate`, only ~0.6% of traffic), a visible card-vs-UPI skew, fraud-blocked
+rows, and a recovered figure that is easy to say out loud. **The rows are
+committed rather than the seed** — a seed only reproduces the same batch against
+a byte-identical `test.csv`, so regenerating the data would silently change the
+numbers being quoted. Provenance is in `data/demo/demo_batch.json`, and a test
+asserts the batch still matches it.
+
+Selecting a "N random" option in the batch dropdown draws a genuinely fresh
+sample each click, as before.
 
 ## Model results
 
@@ -256,6 +303,7 @@ construction.
 - [x] Agent decision logic + LLM adapter
 - [x] Backend API
 - [x] Dashboard
+- [x] Integration + demo scenario
 - [ ] Deployment
 - [ ] Architecture doc + "what broke" writeup
 - [ ] Pitch video

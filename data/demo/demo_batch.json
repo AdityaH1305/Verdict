@@ -1,0 +1,22 @@
+{
+  "description": "Pinned demo batch for the pitch recording. The CSV is the source of truth; the seed records how it was chosen.",
+  "source_seed": 110,
+  "source_file": "data/processed/test.csv",
+  "batch_size": 300,
+  "expected": {
+    "action_mix": {
+      "no_action": 135,
+      "customer_nudge": 76,
+      "retry_later": 43,
+      "auto_retry_now": 42,
+      "escalate": 4
+    },
+    "recovered_count": 85,
+    "recovered_value": 100743.7,
+    "acted_count": 161,
+    "total_failed_value": 442395.33,
+    "fraud_blocked": 33,
+    "card_hard_decline_share": 0.4795,
+    "upi_customer_dropoff_share": 0.4186
+  }
+}

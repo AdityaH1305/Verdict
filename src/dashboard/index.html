@@ -155,8 +155,11 @@
     <div class="controls">
       <label class="sub" for="batch">Batch</label>
       <select id="batch">
-        <option>100</option><option selected>300</option>
-        <option>500</option><option>1000</option>
+        <option value="demo" selected>Demo batch (pinned)</option>
+        <option value="100">100 random</option>
+        <option value="300">300 random</option>
+        <option value="500">500 random</option>
+        <option value="1000">1000 random</option>
       </select>
       <button class="primary" id="run">Run simulation</button>
       <span id="status" class="sub"></span>
@@ -485,14 +488,21 @@ function fillFilters() {
 
 // ------------------------------------------------------------------ load ---
 async function run() {
-  const n = +$("#batch").value;
+  const choice = $("#batch").value;
+  const pinned = choice === "demo";
   const btn = $("#run");
   btn.disabled = true;
-  $("#status").textContent = `Running ${n} transactions…`;
+  $("#status").textContent = pinned
+    ? "Loading pinned demo batch…" : `Running ${choice} transactions…`;
 
   try {
-    // seed first: it populates the audit feed the decision table reads
-    const seeded = await getJSON(`/simulate/seed?n=${n}`, { method: "POST" });
+    // seed first: it populates the audit feed the decision table reads.
+    // The pinned batch is committed data, so the numbers match the script every
+    // time; the random options re-sample on each click.
+    const seeded = pinned
+      ? await getJSON(`/simulate/demo`, { method: "POST" })
+      : await getJSON(`/simulate/seed?n=${choice}`, { method: "POST" });
+    const n = seeded.count;
     FEATURES = {};
     for (const row of seeded.decisions || []) FEATURES[row.transaction_id] = row;
     const [rev, brk, feed] = await Promise.all([
@@ -510,9 +520,11 @@ async function run() {
     // Surface that this was a fresh draw -- the batch used to be a fixed slice,
     // so "did that actually re-run?" is a fair question to answer in the UI.
     const ids = FEED.map(d => d.transaction_id);
-    $("#status").innerHTML =
-      `${n} transactions &middot; <span class="mono">${ids[0] ?? "—"}</span> …
-       <span class="muted">new random sample</span>`;
+    $("#status").innerHTML = pinned
+      ? `${n} transactions &middot; <span class="muted">pinned demo batch —
+         reproducible</span>`
+      : `${n} transactions &middot; <span class="mono">${ids[0] ?? "—"}</span> …
+         <span class="muted">new random sample</span>`;
   } catch (err) {
     $("#status").innerHTML = `<span class="err">${err.message}</span>`;
   } finally {

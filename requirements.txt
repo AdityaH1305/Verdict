@@ -3,8 +3,8 @@ pandas
 numpy
 scikit-learn
 xgboost
+joblib            # model (de)serialization -- imported directly by src/models/*
 matplotlib
-seaborn
 
 # API
 fastapi
@@ -18,4 +18,11 @@ python-dotenv
 
 # Dev
 pytest
-jupyter
+
+# Deliberately NOT here -- both were listed but never imported:
+#   jupyter  -- ~100 MB, and its jupyterlab extension paths are deep enough to
+#               trip Windows' 260-char path limit when the project sits in an
+#               already-deep directory (this aborts the WHOLE install, not just
+#               jupyter). Nothing here imports it; `pip install jupyter`
+#               separately if you want notebooks.
+#   seaborn  -- matplotlib does all the plotting.

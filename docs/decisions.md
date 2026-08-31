@@ -599,6 +599,69 @@ underneath it, which is worse than the original bug. `/simulate/seed` now stores
 its sample and `/stats/*` read it back — asserted by
 `test_stats_describe_the_same_batch_as_the_feed`.
 
+## Day 5 — cold start
+
+Cloned to a temp directory (a clone gets *only tracked files*) and built a fresh
+virtualenv there, rather than reinstalling in place — the latter keeps this
+machine's already-satisfied transitive dependencies and hides exactly the class
+of bug this exercise is for.
+
+**One real defect found: `joblib` was imported but not declared.** Both model
+classes use it to save and load artifacts. It worked only because scikit-learn
+pulls it in transitively — a dependency that evaporates the day scikit-learn
+vendors it away. Now declared explicitly.
+
+Also removed two dependencies that were listed but never imported: `seaborn`
+(matplotlib does all the plotting) and `jupyter` (~100 MB for an empty
+`notebooks/` directory, since removed from the repo structure too).
+
+**A finding I initially got wrong, and corrected:** the first cold run failed
+`pip install` twice with Windows 260-character path errors, and I attributed it
+to `jupyter`. It was my own test location — a 144-character scratchpad path, 99
+characters deeper than the real repo. Re-tested at a realistic depth: everything,
+including `jupyter`, installs cleanly. Removing those two packages is still right
+(nothing imports them), but the *reason* is dead weight, not a broken install.
+The path-length risk is real only for projects already sitting deep in a tree.
+
+Everything else passed cold with **numbers identical to this machine** — same
+`+0.1458` macro-F1 lift, same `241` auto-retry decisions, same `64.9%` retry
+reduction, 85/85 tests green. The pipeline creates `data/`, `models/`, and
+`reports/` itself; a fresh clone does not need them to exist.
+
+## Day 5 — the pinned demo batch
+
+The dashboard now opens on a fixed batch of 300 committed transactions rather
+than a random sample, so the figure spoken in the pitch is the figure on screen.
+
+| | |
+|---|---|
+| Recovered | **₹1,00,744** across 85 transactions |
+| Acted on | 161 of 300 |
+| Action mix | 42 auto-retry · 43 retry-later · 76 nudge · 4 escalate · 135 no-action |
+| Fraud-blocked | 33 |
+| Skew | 48.0% of cards are hard declines vs 17.1% on UPI; 41.9% of UPI is drop-off vs 15.8% on cards |
+
+Selected by `scripts/make_demo_batch.py`, which scans candidate samples and keeps
+only those satisfying every criterion — all five actions present (`escalate` is
+~0.6% of traffic and is the one that silently goes missing), at least two
+escalations so the rarest action survives a filter, fraud-blocked rows present,
+and a card/UPI skew in the designed direction. Seven of two hundred candidates
+qualified; the tie-break is closeness of recovered revenue to a round figure,
+because that number gets said out loud.
+
+**The rows are committed, not the seed.** A seed only reproduces the same batch
+against a byte-identical `test.csv`; regenerating the data on recording day — or
+running on a machine whose pandas samples differently — would silently yield
+different rows and different numbers. `data/demo/demo_batch.csv` removes that
+failure mode; `demo_batch.json` records the source seed so the choice stays
+auditable. Verified by loading it in the cold clone against *independently
+trained* models and getting ₹100,743.70 to the paisa.
+
+`POST /simulate/demo` sits in the **STABLE** bucket of
+`tests/test_output_variability.py` — perfectly repeatable output is its entire
+purpose, the exact inverse of the freshness requirement on `/simulate/seed`.
+Adding the route forced that classification, which is what the meta-test is for.
+
 ## Open decisions (fill in as you go)
 
 - ~~Exact classifier algorithm~~ — **locked Day 2: XGBoost**

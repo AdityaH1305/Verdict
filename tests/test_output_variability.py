@@ -71,6 +71,8 @@ STABLE = [
     ("GET", "/reports/retry-storm", "a committed report, not a live computation"),
     ("GET", "/", "static dashboard page"),
     ("GET", "/health", "server state, not sampled data"),
+    ("POST", "/simulate/demo",
+     "the pinned pitch batch -- being perfectly repeatable is its entire purpose"),
 ]
 
 # Endpoints whose variability is governed by another endpoint, so testing them
@@ -165,6 +167,42 @@ class TestBatchCoherence:
         after = client.get("/stats/recovered-revenue?n=100").json()
 
         assert before == after, "a stats call with a different n replaced the batch"
+
+    def test_pinned_demo_batch_matches_its_recorded_metadata(self, client):
+        """
+        The pitch quotes these numbers out loud. If the committed batch and its
+        sidecar ever drift apart, the slide and the screen disagree -- so assert
+        they still match rather than trusting the file.
+        """
+        import json
+
+        meta_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "data", "demo", "demo_batch.json")
+        if not os.path.exists(meta_path):
+            pytest.skip("run scripts/make_demo_batch.py first")
+
+        with open(meta_path) as f:
+            expected = json.load(f)["expected"]
+
+        body = client.post("/simulate/demo").json()
+        if body.get("detail"):
+            pytest.skip("no pinned demo batch present")
+        revenue = client.get("/stats/recovered-revenue").json()
+
+        assert body["action_mix"] == expected["action_mix"]
+        assert revenue["actual_recovered_value"] == pytest.approx(
+            expected["recovered_value"], abs=0.01)
+        assert revenue["acted_on_count"] == expected["acted_count"]
+
+        # the story the batch was chosen to tell
+        assert set(body["action_mix"]) == {
+            "auto_retry_now", "retry_later", "customer_nudge", "escalate", "no_action"
+        }, "the demo batch must exercise all five actions"
+        assert body["action_mix"]["escalate"] >= 2
+
+        feed = client.get("/decisions?limit=300").json()["decisions"]
+        assert sum(d["fraud_blocked"] for d in feed) == expected["fraud_blocked"]
 
     def test_stats_follow_a_new_seed(self, client):
         """The batch must still be replaceable -- by seeding, the intended way."""
