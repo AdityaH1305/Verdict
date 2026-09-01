@@ -36,7 +36,8 @@ Two ML models + one reasoning agent, in that order:
    features at time of failure: `hard_decline`, `soft_decline`,
    `customer_dropoff`, `fraud_block`.
 2. **Recovery Success Model** — predicts probability that a retry/nudge
-   recovers the transaction, conditioned on the predicted category.
+   recovers the transaction, conditioned on the predicted category, **with an
+   uncertainty interval alongside the point estimate**.
    **Never invoked for `fraud_block` transactions — this is an
    architectural rule, not a learned preference.**
 3. **Recovery Agent** — combines both model outputs into an action
@@ -201,7 +202,7 @@ the numbers on screen are the numbers in the script, every run:
 |---|---|
 | Recovered | **₹1,00,744** across 85 transactions |
 | Acted on | 161 of 300 |
-| Action mix | 42 auto-retry · 43 retry-later · 76 nudge · 4 escalate · 135 no-action |
+| Action mix | 34 auto-retry · 51 retry-later · 76 nudge · 10 escalate · 129 no-action |
 | Fraud-blocked | 33 (never scored, never narrated) |
 | Skew | 48.0% of cards are hard declines; 41.9% of UPI is customer drop-off |
 
@@ -269,6 +270,28 @@ The agent acts on **53.6%** of failures and leaves only **27 recoverable
 transactions** untouched. Note the mid band splits on *category*, not
 probability: identical odds mean different things depending on whether a bank
 refused or a human walked away.
+
+### Uncertainty changes how the agent acts, not how much it recovers
+
+Model 2 carries an interval, not just a number — the spread across its five
+calibration folds, which costs no retraining and provably cannot move the point
+estimate (it is the mean of those same folds). Near a threshold, width matters:
+
+- **Uncertain above the auto-retry line** → retry with backoff instead of
+  immediately. A hedge, not a withdrawal.
+- **Uncertain below the give-up line** → send for human review instead of
+  silently writing the transaction off.
+
+The asymmetry is measured, not assumed. Escalating uncertain *auto-retries* is
+the obvious move and it is wrong — those transactions recover slightly **more**
+often than confident ones (0.611 vs 0.604), so pulling them out of the retry path
+destroys revenue. At the give-up line the opposite holds: transactions whose
+interval crosses the floor recover **3.3× more often** than confident give-ups
+(0.120 vs 0.036).
+
+Both adjustments move between actions of the same kind, so **recovered revenue is
+identical with the rule on or off** — verified on the full test set and the demo
+batch. Passing no interval reproduces the original behaviour exactly.
 
 ### What the fraud hard-block guarantees
 

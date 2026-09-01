@@ -662,6 +662,101 @@ trained* models and getting ₹100,743.70 to the paisa.
 purpose, the exact inverse of the freshness requirement on `/simulate/seed`.
 Adding the route forced that classification, which is what the meta-test is for.
 
+## Day 7 — uncertainty-aware decisions
+
+Model 2 emitted a single number, so the agent treated 0.499 and 0.501 as
+categorically different decisions even where it had no basis for separating
+them. It now carries an interval alongside the point estimate, and interval
+width can change the action near a threshold.
+
+### The interval was already in the model
+
+`CalibratedClassifierCV(method="isotonic", cv=5)` holds **five independently
+fitted, independently calibrated sub-models**, and `predict_proba` returns their
+mean. So a per-transaction spread is available with **no retraining and no
+second model** — and the point estimate provably cannot drift, because it is the
+mean of the exact members the interval is built from. Asserted, not assumed:
+`max |point − mean(members)| == 0.0` across the full test set.
+
+That is why this beat the alternatives. Bootstrapping would retrain N models,
+each acquiring its own calibration and putting the existing one at risk;
+quantile regression is a regression formulation and the target here is binary.
+
+**Named honestly:** this is disagreement between calibration folds — epistemic
+uncertainty about the calibrated mapping. It is not a frequentist confidence
+interval and is not described as one in the UI, the API, or here.
+
+### The rule is asymmetric, because the data said so
+
+The obvious rule — "wide interval near a threshold, so escalate instead of
+acting" — is **wrong at the auto-retry boundary**, and measurement caught it:
+
+| Boundary | Flagged rows recover | Confident rows recover | Verdict |
+|---|---|---|---|
+| auto-retry (p ≥ 0.50) | 0.611 | 0.604 | Flagged rows are *better* bets — escalating them destroys revenue |
+| give-up (p < 0.25) | 0.120 | 0.036 | **3.3× more recoverable** — silently discarding them is a real loss |
+
+So the two boundaries get different treatments, both using the existing action
+ladder:
+
+- **Top — hedge, don't withdraw.** `auto_retry_now` → `retry_later`: retry with
+  backoff instead of immediately. Still recovering, just not asserting
+  confidence the model doesn't have.
+- **Bottom — surface, don't discard.** `no_action` → `escalate`: send for human
+  review instead of writing off a transaction the model may be wrong about.
+
+**Both are revenue-neutral by construction**, because each moves between actions
+of the same kind: `auto_retry_now`/`retry_later` both act, `no_action`/`escalate`
+both don't. Verified on the full test set and the demo batch — `acted_on` and
+recovered value identical with the rule on or off. Uncertainty changes *how* the
+agent acts, never how much it recovers.
+
+### A width floor was necessary at the top
+
+Straddling 0.50 is not rare: **80% of auto-retries do**, because their point
+estimates sit just above the line and the median interval is 0.153 wide. With no
+floor the rule hedged 193 of 241 auto-retries and the flagged/kept recovery split
+was 0.611 vs 0.604 — i.e. it was selecting marginally *better* bets and emptying
+out the flagship action for nothing. `MIN_HEDGE_WIDTH = 0.20` (the 80th
+percentile of auto-retry widths) is where the discrimination is strongest
+(hedged 0.553 vs kept 0.624) and hedges the genuinely uncertain fifth.
+
+No floor at the give-up boundary: straddling 0.25 is already rare (25 of 525),
+and every one of those intervals is wider than 0.20 anyway, so a floor would
+change nothing while implying a precision the data doesn't support.
+
+### The alignment trap — which bit the analysis before it bit the code
+
+Intervals are computed on non-fraud rows and scattered back into a full-length
+array. The mask must be the **predicted** fraud mask that `decide_batch`
+computes, *not* `drop_fraud_rows()`'s **true-label** mask. The two differ by 3
+rows on the test set (Model 1's fraud recall is 0.985), and mixing them attaches
+one transaction's uncertainty to another's decision **without raising anything**
+— the row counts happen to match on the demo batch.
+
+The first exploratory analysis did exactly this, which is why an early estimate
+of the demo impact (17 hedged / 7 surfaced) was wrong; correctly aligned it is
+8 / 6. `tests/test_uncertainty.py::test_intervals_align_with_the_predicted_fraud_mask`
+asserts the two masks genuinely differ and that intervals follow the predicted
+one.
+
+### Backward compatibility
+
+`decide_action(category, p)` with no interval reproduces the original rule
+exactly — asserted over a sweep of every category × 101 probabilities.
+`predict_interval()` returns `None` if the loaded artifact predates it, so an
+older pickle degrades to point-estimate behaviour instead of failing. The audit
+record gains `recovery_interval` and `uncertainty_adjusted`; no existing field
+changed meaning.
+
+### Effect on the pinned demo batch
+
+8 hedged, 6 surfaced. Action mix 42/43/76/4/135 → **34 auto-retry / 51
+retry-later / 76 nudge / 10 escalate / 129 no-action**. Headline recovered
+revenue **₹1,00,744 and acted-on 161 are unchanged**, so the spoken number is
+unaffected. `scripts/make_demo_batch.py` still selects seed 110, so the pinned
+batch is stable.
+
 ## Open decisions (fill in as you go)
 
 - ~~Exact classifier algorithm~~ — **locked Day 2: XGBoost**

@@ -135,6 +135,19 @@
           padding: 5px 9px; font-size: 12px; }
   .prob b { font-variant-numeric: tabular-nums; }
 
+  .iv { margin-top: 3px; }
+  .iv-track { position: relative; height: 4px; border-radius: 3px;
+              background: var(--bg); border: 1px solid var(--line); width: 78px;
+              margin-left: auto; }
+  .iv-span { position: absolute; top: 0; height: 100%; border-radius: 3px; }
+  .iv-tick { position: absolute; top: -2px; width: 1px; height: 8px;
+             background: var(--muted); opacity: .8; }
+  .iv-num { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums;
+            margin-top: 2px; }
+  .adj { margin: 0 0 14px; padding: 9px 11px; border-radius: 7px;
+         background: rgba(244,162,97,.10); border: 1px solid rgba(244,162,97,.32);
+         font-size: 12.5px; }
+
   .live-out { margin-top: 10px; padding: 11px 13px; border-radius: 8px;
               background: rgba(108,142,227,.09); border: 1px solid rgba(108,142,227,.3); }
   .muted { color: var(--muted); }
@@ -378,6 +391,24 @@ function renderStorm(s) {
      to transactions that could never succeed.</div>`;
 }
 
+// Interval under the point estimate: the numeric range plus a small bar showing
+// where that range sits on 0..1, with a tick at the threshold it depends on.
+// Rows without an interval (fraud-blocked, or an older model artifact) render
+// exactly as they did before this existed.
+function intervalCell(d) {
+  const iv = d.recovery_interval;
+  if (!iv) return "";
+  const left = iv.lo * 100, w = Math.max((iv.hi - iv.lo) * 100, 1.5);
+  // the cutoff this row's action actually turned on
+  const cut = d.recovery_probability >= 0.5 || iv.hi >= 0.5 ? 50 : 25;
+  const wide = d.uncertainty_adjusted ? "var(--esc)" : "var(--muted)";
+  return `<div class="iv" title="Spread across Model 2's five calibration folds — model disagreement, not a confidence interval">
+      <div class="iv-track"><span class="iv-tick" style="left:${cut}%"></span>
+        <span class="iv-span" style="left:${left}%;width:${w}%;background:${wide}"></span></div>
+      <div class="iv-num">${pct(iv.lo)}–${pct(iv.hi)}</div>
+    </div>`;
+}
+
 function renderFeed() {
   const fa = $("#f-action").value, fc = $("#f-cat").value;
   const rows = FEED.filter(d =>
@@ -404,12 +435,27 @@ function renderFeed() {
             <span class="muted" style="font-size:11.5px">${conf != null ? pct(conf) : ""}</span></td>
         <td class="num">${d.fraud_blocked
             ? '<span class="muted" title="never computed for fraud">not scored</span>'
-            : pct(d.recovery_probability)}</td>
+            : `${pct(d.recovery_probability)}${intervalCell(d)}`}</td>
         <td><span class="badge" style="background:var(${ACT_COLOR[d.action] || "--none"});color:#08130f">
             ${titled(d.action)}</span></td>
       </tr>
       <tr class="why" id="why-${i}" hidden><td colspan="6"><div class="why-inner">
         <h4>Why</h4>
+        ${d.uncertainty_adjusted ? `<div class="adj">
+            <strong>Uncertainty changed this decision.</strong>
+            ${d.uncertainty_adjusted === "uncertain_at_auto_retry_threshold"
+              ? `The point estimate (${pct(d.recovery_probability)}) cleared the
+                 auto-retry line, but the model's folds disagree across it
+                 (${pct(d.recovery_interval.lo)}–${pct(d.recovery_interval.hi)}).
+                 Retrying with backoff instead of immediately &mdash; still recovering,
+                 just not asserting confidence the model doesn't have.`
+              : `The point estimate (${pct(d.recovery_probability)}) was below the
+                 give-up line, but the interval crosses it
+                 (${pct(d.recovery_interval.lo)}–${pct(d.recovery_interval.hi)}).
+                 Sent for human review rather than silently written off &mdash;
+                 transactions like this recover 3.3&times; more often than confident
+                 give-ups.`}
+          </div>` : ""}
         <p>${d.explanation || '<span class="muted">No explanation recorded.</span>'}</p>
         <h4>Grounded in the bank's actual response</h4>
         <p class="grounded">${d.error_code

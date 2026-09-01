@@ -1,15 +1,15 @@
 {
-  "description": "Pinned demo batch for the pitch recording. The CSV is the source of truth; the seed records how it was chosen.",
+  "description": "Pinned demo batch for the pitch recording. The CSV is the source of truth; the seed records how it was chosen. Action mix reflects uncertainty-aware routing; recovered_value is unchanged by it because both adjustments move between actions of the same kind.",
   "source_seed": 110,
   "source_file": "data/processed/test.csv",
   "batch_size": 300,
   "expected": {
     "action_mix": {
-      "no_action": 135,
+      "no_action": 129,
       "customer_nudge": 76,
-      "retry_later": 43,
-      "auto_retry_now": 42,
-      "escalate": 4
+      "retry_later": 51,
+      "auto_retry_now": 34,
+      "escalate": 10
     },
     "recovered_count": 85,
     "recovered_value": 100743.7,
@@ -17,6 +17,10 @@
     "total_failed_value": 442395.33,
     "fraud_blocked": 33,
     "card_hard_decline_share": 0.4795,
-    "upi_customer_dropoff_share": 0.4186
+    "upi_customer_dropoff_share": 0.4186,
+    "uncertainty_adjusted": {
+      "uncertain_at_auto_retry_threshold": 8,
+      "uncertain_at_give_up_threshold": 6
+    }
   }
 }

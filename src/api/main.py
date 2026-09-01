@@ -190,6 +190,14 @@ class Transaction(BaseModel):
     daily_limit_utilization: Optional[float] = None
 
 
+class RecoveryInterval(BaseModel):
+    """Spread across Model 2's calibration folds. Not a confidence interval."""
+
+    lo: float
+    hi: float
+    width: float
+
+
 class Decision(BaseModel):
     transaction_id: Optional[str]
     timestamp: str
@@ -200,6 +208,11 @@ class Decision(BaseModel):
     predicted_category: str
     category_probabilities: Dict[str, float]
     recovery_probability: Optional[float]
+    # null for fraud-blocked rows (no estimate is produced) and for model
+    # artifacts predating predict_interval().
+    recovery_interval: Optional[RecoveryInterval] = None
+    # Names the uncertainty rule that changed this action, if any.
+    uncertainty_adjusted: Optional[str] = None
     action: str
     fraud_blocked: bool
     explanation: str

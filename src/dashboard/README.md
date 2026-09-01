@@ -31,6 +31,7 @@ Node 24 is available if this ever outgrows a single file — but it hasn't.
 | Action mix | `GET /stats/breakdown` → `by_action` |
 | Retry storm before/after | `GET /reports/retry-storm` |
 | Live decision feed + expandable "why" | `POST /simulate/seed` then `GET /decisions` |
+| Uncertainty interval per row | `recovery_interval` on each decision |
 
 The page computes no decisions of its own — every number comes from the backend.
 
@@ -76,3 +77,9 @@ always describes the rows underneath it.
 - Fraud-blocked rows show "not scored" rather than a probability, because none is
   ever computed for them. That makes the architectural hard rule visible in the
   UI instead of merely asserted in the docs.
+- The P(recovery) cell shows the point estimate with its uncertainty interval
+  beneath, plus a small bar placing that range on 0..1 with a tick at the
+  threshold the row's action turned on. The bar goes amber when uncertainty
+  actually changed the action, and the expanded "why" then says which rule fired
+  and why. Rows with no interval (fraud-blocked, or an older model artifact)
+  render exactly as they did before.
