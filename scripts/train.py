@@ -33,9 +33,10 @@ from src.models.recovery_success_model import (  # noqa: E402
     RecoverySuccessModel, drop_fraud_rows,
 )
 from src.models.recovery_success_model import evaluate as evaluate_recovery  # noqa: E402
+from src.monitoring.baseline import write_baseline  # noqa: E402
 from src.paths import (  # noqa: E402
-    CALIBRATION_CURVE_PATH, CONFUSION_MATRIX_PATH, METRICS_PATH, TEST_DATA,
-    TRAIN_DATA, ensure_dirs,
+    BASELINE_PATH, CALIBRATION_CURVE_PATH, CONFUSION_MATRIX_PATH, METRICS_PATH,
+    TEST_DATA, TRAIN_DATA, ensure_dirs,
 )
 
 
@@ -150,7 +151,13 @@ def main():
     with open(METRICS_PATH, "w") as f:
         json.dump(metrics, f, indent=2)
 
+    # Drift reference stats, from the SAME frame the models were just fitted on,
+    # so the baseline and the models can never describe different data.
+    # Read-only monitoring: nothing in the decision path reads this.
+    write_baseline(train_df, BASELINE_PATH)
+
     print(f"\nWrote {METRICS_PATH}")
+    print(f"Wrote {BASELINE_PATH}")
     print(f"Wrote {CONFUSION_MATRIX_PATH}")
     print(f"Wrote {CALIBRATION_CURVE_PATH}")
 

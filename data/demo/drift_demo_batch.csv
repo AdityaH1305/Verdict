@@ -1,0 +1,301 @@
+transaction_id,amount,time_of_day,day_of_week,retry_count,customer_txn_history_count,customer_past_failure_rate,seconds_to_failure,merchant_category,payment_method,failure_category,error_code,card_network,issuing_bank,is_3ds_flow,card_age_months,retry_success,psp_app,time_since_app_switch,daily_limit_utilization
+txn_007764,275.99,23,4,0,4,0.428,41.6,utilities,upi,soft_decline,UT,,SBI,,,True,GPay,2.3,0.458
+txn_005200,2186.78,0,3,1,7,0.148,0.5,food_delivery,upi,fraud_block,ZU,,SBI,,,False,GPay,22.3,0.543
+txn_001805,21626.11,8,0,1,1,0.125,3.8,utilities,card,fraud_block,59,Mastercard,Kotak,False,1.1,False,,,
+txn_005950,13309.58,19,5,0,48,0.153,4.0,subscriptions,card,hard_decline,14,Visa,ICICI,True,45.3,False,,,
+txn_004708,385.22,0,1,0,10,0.237,40.1,ecommerce,upi,soft_decline,U30,,ICICI,,,False,PhonePe,17.4,0.509
+txn_001835,655.68,9,3,1,2,0.039,67.0,subscriptions,card,customer_dropoff,,Rupay,Axis,False,44.3,False,,,
+txn_004136,12095.84,17,3,0,4,0.129,3.3,travel,upi,fraud_block,59,,Yes Bank,,,False,PhonePe,10.1,0.68
+txn_004202,2446.26,18,3,2,3,0.138,4.2,travel,upi,fraud_block,59,,PNB,,,False,PhonePe,15.7,0.493
+txn_005168,643.49,13,4,1,30,0.343,0.9,subscriptions,upi,hard_decline,ZU,,PNB,,,False,PhonePe,7.3,0.866
+txn_000642,2196.04,0,4,0,1,0.168,3.5,subscriptions,upi,fraud_block,ZI,,PNB,,,False,PhonePe,20.3,0.637
+txn_007738,4347.33,3,1,0,4,0.12,0.3,food_delivery,upi,fraud_block,59,,Axis,,,False,Paytm,17.6,0.544
+txn_000743,1643.77,18,3,2,3,0.153,30.9,ecommerce,upi,customer_dropoff,U30,,Kotak,,,False,GPay,660.4,0.631
+txn_004488,836.46,3,4,0,20,0.037,1.3,subscriptions,card,hard_decline,05,Mastercard,Kotak,False,48.0,False,,,
+txn_005264,155.54,1,4,0,2,0.135,4.7,utilities,card,fraud_block,61,Mastercard,ICICI,True,6.4,False,,,
+txn_004372,4444.2,2,4,1,1,0.123,3.6,travel,upi,fraud_block,59,,Axis,,,False,PhonePe,6.5,0.387
+txn_007365,1121.07,18,5,1,1,0.206,2.5,gaming,upi,fraud_block,ZI,,SBI,,,False,PhonePe,21.2,0.129
+txn_002623,2373.21,2,1,0,2,0.209,2.3,food_delivery,upi,hard_decline,Z9,,HDFC,,,False,PhonePe,15.4,0.912
+txn_000996,1051.78,7,4,1,32,0.022,62.2,utilities,card,soft_decline,96,Visa,Kotak,False,26.5,True,,,
+txn_006788,1581.97,1,5,0,4,0.312,22.4,ecommerce,card,fraud_block,61,Mastercard,IDFC First,True,10.0,False,,,
+txn_007924,10063.11,16,4,1,2,0.338,7.2,food_delivery,upi,fraud_block,59,,ICICI,,,False,Paytm,7.9,0.142
+txn_003851,247.9,11,1,1,9,0.068,1.5,travel,card,hard_decline,14,Mastercard,Axis,True,16.8,False,,,
+txn_001393,1422.98,5,3,0,3,0.097,1.2,ecommerce,upi,fraud_block,59,,PNB,,,False,PhonePe,13.6,0.204
+txn_005218,392.77,15,5,0,22,0.04,44.4,utilities,upi,customer_dropoff,ZM,,PNB,,,True,GPay,0.3,0.308
+txn_003934,364.06,5,5,2,8,0.087,50.1,food_delivery,upi,customer_dropoff,,,ICICI,,,False,GPay,146.2,0.158
+txn_005622,9337.64,4,6,0,1,0.098,1.9,food_delivery,upi,fraud_block,59,,PNB,,,False,PhonePe,7.9,0.393
+txn_006324,345.57,5,1,1,37,0.207,82.6,ecommerce,upi,customer_dropoff,,,Axis,,,False,Paytm,136.9,0.153
+txn_003319,3311.91,2,3,0,5,0.152,22.3,gaming,upi,customer_dropoff,U67,,SBI,,,True,PhonePe,24.7,0.073
+txn_002434,2372.42,11,4,0,5,0.127,13.6,subscriptions,upi,hard_decline,ZH,,SBI,,,False,GPay,21.8,0.522
+txn_007661,798.49,1,1,1,2,0.246,8.6,travel,upi,fraud_block,ZI,,HDFC,,,False,PhonePe,45.4,0.601
+txn_002787,2717.58,14,3,0,24,0.473,85.7,ecommerce,upi,customer_dropoff,U30,,HDFC,,,False,PhonePe,131.2,0.443
+txn_005137,1752.22,22,1,0,8,0.38,27.3,travel,upi,customer_dropoff,,,SBI,,,False,Paytm,16.7,0.106
+txn_005879,387.1,10,3,0,29,0.2,0.7,food_delivery,card,hard_decline,51,Mastercard,Kotak,False,41.5,False,,,
+txn_002232,8774.21,0,6,1,2,0.316,0.9,ecommerce,upi,fraud_block,ZI,,Kotak,,,False,GPay,24.4,0.628
+txn_002947,3662.78,1,5,1,4,0.353,213.7,subscriptions,upi,customer_dropoff,,,SBI,,,True,other,8.7,0.764
+txn_005047,1666.89,1,1,0,8,0.152,34.4,ecommerce,upi,soft_decline,U68,,Kotak,,,True,other,1.0,0.581
+txn_005419,3805.91,23,5,0,19,0.137,35.0,utilities,upi,soft_decline,Y1,,PNB,,,True,other,14.5,0.377
+txn_003378,288.0,15,4,0,33,0.253,57.0,subscriptions,upi,customer_dropoff,,,HDFC,,,False,Paytm,64.2,0.113
+txn_003572,1153.78,15,3,1,26,0.067,56.8,gaming,upi,soft_decline,U30,,SBI,,,False,GPay,3.5,0.093
+txn_002764,408.66,23,5,1,17,0.071,3.1,subscriptions,card,hard_decline,51,Rupay,ICICI,False,71.6,False,,,
+txn_007451,311.13,20,0,4,1,0.09,4.0,subscriptions,upi,fraud_block,Z8,,Yes Bank,,,False,PhonePe,19.7,0.49
+txn_007037,2462.74,9,3,0,7,0.128,0.3,ecommerce,upi,hard_decline,Z7,,Axis,,,False,Paytm,54.2,0.803
+txn_005228,5438.67,2,1,1,1,0.093,4.7,gaming,upi,fraud_block,ZI,,HDFC,,,False,GPay,15.3,0.635
+txn_006950,265.39,17,2,2,2,0.471,6.9,food_delivery,upi,hard_decline,Z7,,PNB,,,False,PhonePe,3.1,0.861
+txn_004890,13706.2,4,1,0,2,0.124,10.3,food_delivery,upi,fraud_block,ZI,,Kotak,,,False,PhonePe,49.1,0.391
+txn_001883,1460.42,12,3,0,5,0.169,55.1,travel,upi,customer_dropoff,ZM,,Axis,,,False,GPay,2.9,0.547
+txn_002019,2022.35,15,0,2,27,0.258,7.4,food_delivery,card,hard_decline,05,Rupay,Kotak,False,43.1,False,,,
+txn_001707,588.57,23,1,0,2,0.22,38.1,subscriptions,upi,soft_decline,U67,,Yes Bank,,,False,GPay,2.0,0.55
+txn_007990,2184.25,3,2,1,2,0.146,0.3,food_delivery,upi,fraud_block,ZI,,PNB,,,False,GPay,23.8,0.541
+txn_007261,2946.83,7,6,0,5,0.164,7.3,travel,upi,hard_decline,Z8,,SBI,,,False,GPay,34.9,0.632
+txn_005113,3537.41,21,2,1,2,0.241,17.7,utilities,upi,customer_dropoff,U30,,HDFC,,,True,PhonePe,91.7,0.154
+txn_000847,268.15,1,0,0,2,0.135,2.6,travel,card,fraud_block,59,Mastercard,ICICI,True,2.0,False,,,
+txn_002448,2047.26,9,3,0,2,0.162,4.8,ecommerce,upi,fraud_block,ZI,,Kotak,,,False,GPay,4.6,0.552
+txn_005024,6947.83,21,1,1,1,0.262,5.0,utilities,card,fraud_block,61,Visa,IDFC First,True,8.4,False,,,
+txn_005591,636.79,16,2,1,59,0.415,41.1,food_delivery,upi,customer_dropoff,U30,,Axis,,,False,other,47.1,0.299
+txn_005204,2552.88,10,2,0,5,0.224,37.5,ecommerce,upi,soft_decline,U67,,Axis,,,True,PhonePe,46.9,0.663
+txn_000666,1253.27,2,3,1,31,0.141,54.3,travel,upi,customer_dropoff,U67,,ICICI,,,False,Paytm,425.0,0.249
+txn_007848,233.81,8,1,1,19,0.204,32.3,food_delivery,upi,soft_decline,Y1,,ICICI,,,True,PhonePe,9.4,0.394
+txn_006475,1382.12,13,3,0,15,0.274,40.6,food_delivery,upi,customer_dropoff,,,HDFC,,,True,GPay,71.1,0.623
+txn_005049,1251.11,14,6,0,1,0.202,5.0,gaming,card,fraud_block,61,Rupay,Axis,True,3.4,False,,,
+txn_004654,1829.1,23,6,0,7,0.101,2.5,food_delivery,upi,fraud_block,ZI,,HDFC,,,False,PhonePe,7.2,0.247
+txn_000670,381.93,1,0,0,3,0.208,78.3,travel,upi,customer_dropoff,U30,,SBI,,,True,GPay,3.3,0.442
+txn_007441,1901.37,0,4,0,1,0.094,0.4,ecommerce,upi,fraud_block,59,,Kotak,,,False,GPay,3.7,0.682
+txn_005403,38281.69,4,1,1,5,0.225,1.0,ecommerce,upi,fraud_block,ZI,,ICICI,,,False,PhonePe,0.1,0.322
+txn_003448,5195.13,4,3,0,2,0.058,22.4,travel,card,soft_decline,05,Mastercard,HDFC,False,8.5,True,,,
+txn_000471,2160.85,3,3,1,3,0.027,57.7,utilities,upi,customer_dropoff,U30,,PNB,,,False,Paytm,11.9,0.171
+txn_004272,604.69,14,1,1,12,0.121,31.4,subscriptions,upi,soft_decline,BT,,Axis,,,True,GPay,3.8,0.22
+txn_003824,1737.25,17,3,0,13,0.181,37.4,gaming,upi,soft_decline,Y1,,Axis,,,False,Paytm,4.6,0.329
+txn_000128,1573.22,20,4,2,3,0.093,31.2,ecommerce,upi,soft_decline,Y1,,Kotak,,,False,PhonePe,6.2,0.124
+txn_004995,3044.08,9,3,0,25,0.245,0.8,subscriptions,card,hard_decline,61,Visa,SBI,False,61.4,False,,,
+txn_001496,370.67,8,0,1,16,0.126,100.2,food_delivery,upi,customer_dropoff,UT,,PNB,,,False,GPay,52.3,0.551
+txn_005039,1170.41,12,2,1,1,0.261,4.8,utilities,upi,hard_decline,ZU,,ICICI,,,False,PhonePe,36.7,0.589
+txn_005563,7346.72,16,0,1,10,0.149,12.3,subscriptions,upi,fraud_block,59,,PNB,,,False,GPay,8.7,0.277
+txn_007076,746.11,5,2,1,1,0.123,32.9,travel,upi,fraud_block,ZI,,PNB,,,False,PhonePe,22.4,0.816
+txn_001446,10907.83,10,1,0,5,0.163,8.4,travel,upi,fraud_block,59,,PNB,,,False,Paytm,12.5,0.25
+txn_003477,3225.12,3,2,2,5,0.253,67.9,ecommerce,upi,customer_dropoff,,,Axis,,,False,Paytm,83.0,0.133
+txn_001963,1547.2,5,1,1,4,0.296,44.3,subscriptions,card,customer_dropoff,05,Rupay,ICICI,False,30.5,False,,,
+txn_003711,4646.35,3,5,1,2,0.086,4.7,food_delivery,card,fraud_block,05,Rupay,Kotak,True,3.1,False,,,
+txn_007375,141.7,16,6,1,51,0.29,48.0,utilities,upi,customer_dropoff,,,ICICI,,,False,PhonePe,227.8,0.353
+txn_000431,517.42,6,5,0,23,0.273,25.9,food_delivery,upi,soft_decline,BT,,PNB,,,False,PhonePe,0.3,0.7
+txn_004248,205.77,6,5,1,4,0.501,114.8,travel,upi,customer_dropoff,ZM,,Yes Bank,,,False,Paytm,50.0,0.374
+txn_001620,1092.12,4,0,2,17,0.337,30.9,utilities,upi,customer_dropoff,,,ICICI,,,True,Paytm,24.4,0.507
+txn_005233,1634.83,4,1,1,1,0.016,10.9,gaming,card,fraud_block,14,Mastercard,HDFC,True,3.8,False,,,
+txn_004098,2386.03,12,1,0,9,0.119,49.2,ecommerce,upi,soft_decline,U67,,PNB,,,False,Paytm,1.2,0.746
+txn_002356,1410.1,22,3,0,1,0.276,1.0,subscriptions,upi,fraud_block,ZI,,Yes Bank,,,False,GPay,14.3,0.482
+txn_000532,9755.89,0,2,0,7,0.203,7.1,gaming,upi,fraud_block,ZI,,HDFC,,,False,Paytm,10.3,0.627
+txn_004758,6197.27,22,1,0,1,0.307,9.9,travel,upi,fraud_block,ZU,,Axis,,,False,PhonePe,23.3,0.522
+txn_005249,8678.37,1,1,0,1,0.233,0.7,utilities,card,fraud_block,05,Visa,HDFC,True,3.1,False,,,
+txn_002775,3901.85,20,3,1,15,0.357,2.8,ecommerce,upi,hard_decline,U30,,PNB,,,False,PhonePe,32.4,0.936
+txn_001015,291.67,3,2,1,29,0.088,61.1,subscriptions,upi,customer_dropoff,U30,,HDFC,,,True,GPay,39.0,0.242
+txn_007563,5342.38,0,4,0,4,0.204,0.3,travel,card,fraud_block,05,Visa,IDFC First,True,7.3,False,,,
+txn_000077,1092.59,9,0,0,3,0.056,96.6,gaming,upi,customer_dropoff,,,SBI,,,False,Paytm,85.3,0.241
+txn_006437,628.08,22,6,1,22,0.127,7.5,gaming,upi,hard_decline,Z7,,Axis,,,False,GPay,8.4,0.978
+txn_003670,648.3,4,1,1,5,0.341,0.3,food_delivery,card,fraud_block,59,Visa,IDFC First,True,5.4,False,,,
+txn_005295,213.64,5,5,0,2,0.202,47.9,utilities,upi,customer_dropoff,ZM,,ICICI,,,False,Paytm,83.0,0.634
+txn_007640,1154.06,10,2,1,33,0.26,36.1,food_delivery,upi,soft_decline,Y1,,ICICI,,,False,Paytm,3.1,0.201
+txn_005020,1782.45,5,0,1,2,0.03,4.0,utilities,upi,fraud_block,59,,PNB,,,False,GPay,39.8,0.642
+txn_002926,692.9,8,1,1,60,0.246,45.9,subscriptions,upi,customer_dropoff,U67,,ICICI,,,False,other,10.7,0.196
+txn_004918,510.67,0,4,0,33,0.091,95.3,utilities,upi,customer_dropoff,UT,,Kotak,,,False,GPay,32.5,0.267
+txn_004823,181.8,3,4,0,21,0.129,39.3,ecommerce,upi,customer_dropoff,,,Axis,,,False,GPay,42.9,0.484
+txn_003025,1254.87,10,1,1,8,0.071,38.1,utilities,upi,soft_decline,UT,,PNB,,,False,GPay,2.8,0.383
+txn_001223,2666.7,1,0,0,1,0.141,10.1,gaming,card,fraud_block,59,Mastercard,IDFC First,True,11.5,False,,,
+txn_003980,323.06,14,6,0,23,0.058,7.3,food_delivery,upi,hard_decline,Z9,,HDFC,,,False,GPay,17.3,0.761
+txn_003901,664.18,3,5,0,47,0.204,2.3,utilities,upi,hard_decline,ZM,,Axis,,,False,GPay,0.2,0.773
+txn_006100,461.11,7,6,0,48,0.184,36.2,subscriptions,upi,customer_dropoff,U30,,SBI,,,False,GPay,37.1,0.329
+txn_001307,397.42,15,4,1,73,0.302,140.4,utilities,upi,customer_dropoff,UT,,SBI,,,False,PhonePe,133.7,0.346
+txn_007770,2836.91,11,5,0,16,0.13,43.7,subscriptions,upi,customer_dropoff,,,ICICI,,,True,GPay,31.3,0.839
+txn_004834,4365.82,13,4,2,5,0.132,1.3,utilities,upi,fraud_block,59,,Yes Bank,,,False,GPay,26.1,0.329
+txn_001869,78.26,1,1,0,84,0.287,29.8,subscriptions,upi,soft_decline,U67,,Yes Bank,,,True,Paytm,3.1,0.384
+txn_002296,203.84,14,1,0,6,0.094,31.9,utilities,upi,soft_decline,UT,,PNB,,,True,PhonePe,4.5,0.331
+txn_002521,2451.6,14,6,1,20,0.031,30.1,utilities,upi,soft_decline,U28,,Axis,,,False,GPay,2.7,0.651
+txn_006643,441.7,20,2,0,2,0.298,11.9,gaming,card,fraud_block,59,Visa,IDFC First,True,4.6,False,,,
+txn_005689,8753.29,23,3,0,33,0.259,36.5,gaming,upi,customer_dropoff,U30,,HDFC,,,False,GPay,27.6,0.223
+txn_004745,396.56,17,4,1,5,0.341,119.1,ecommerce,upi,customer_dropoff,U30,,Axis,,,True,GPay,151.7,0.279
+txn_006558,956.38,14,2,0,16,0.3,3.5,food_delivery,upi,hard_decline,Z9,,PNB,,,False,GPay,34.1,0.627
+txn_001384,3333.81,4,2,1,15,0.132,3.8,gaming,upi,hard_decline,Z9,,Yes Bank,,,False,Paytm,19.2,0.533
+txn_006979,665.36,11,4,0,4,0.311,1.1,ecommerce,upi,hard_decline,ZU,,SBI,,,False,PhonePe,1.5,0.851
+txn_005014,2089.32,13,2,0,34,0.197,1.3,gaming,card,hard_decline,51,Visa,HDFC,False,56.1,False,,,
+txn_004506,772.82,22,6,0,7,0.315,134.0,food_delivery,upi,customer_dropoff,,,SBI,,,False,PhonePe,179.2,0.659
+txn_000979,123.88,13,5,1,3,0.332,17.9,subscriptions,card,fraud_block,59,Visa,Kotak,False,10.4,False,,,
+txn_006564,1538.54,2,3,0,7,0.235,37.0,gaming,upi,soft_decline,BT,,HDFC,,,True,GPay,4.2,0.332
+txn_005065,583.31,1,2,3,7,0.107,5.4,travel,card,hard_decline,54,Visa,IDFC First,False,76.0,False,,,
+txn_000189,1792.62,21,0,0,41,0.052,56.3,gaming,card,customer_dropoff,,Visa,IDFC First,True,50.3,False,,,
+txn_005362,1992.22,9,6,1,33,0.339,56.0,gaming,upi,soft_decline,Y1,,PNB,,,True,PhonePe,2.9,0.448
+txn_004881,1984.37,19,3,1,15,0.179,122.6,travel,upi,customer_dropoff,,,HDFC,,,False,Paytm,3.2,0.688
+txn_000686,994.19,19,5,1,19,0.137,60.9,utilities,upi,customer_dropoff,U30,,PNB,,,False,PhonePe,29.6,0.73
+txn_006687,415.25,0,6,1,47,0.274,31.9,ecommerce,upi,soft_decline,U28,,PNB,,,True,GPay,0.6,0.179
+txn_001722,743.74,23,4,0,14,0.207,3.2,gaming,upi,hard_decline,Z8,,Kotak,,,False,Paytm,20.3,0.921
+txn_001798,1049.78,13,4,1,30,0.087,19.1,subscriptions,upi,soft_decline,U30,,SBI,,,False,Paytm,8.2,0.547
+txn_000818,1059.2,5,5,5,14,0.186,87.6,subscriptions,upi,customer_dropoff,,,HDFC,,,False,PhonePe,58.7,0.355
+txn_005359,295.31,2,2,0,12,0.168,44.0,travel,upi,customer_dropoff,U67,,Kotak,,,False,PhonePe,18.7,0.29
+txn_004378,304.77,4,1,0,36,0.386,11.5,gaming,card,hard_decline,51,Visa,ICICI,False,31.5,False,,,
+txn_007626,791.09,21,5,0,4,0.083,40.0,subscriptions,upi,soft_decline,U67,,Axis,,,True,PhonePe,8.1,0.333
+txn_000985,12750.91,5,4,2,3,0.246,8.0,ecommerce,upi,fraud_block,ZI,,Axis,,,False,Paytm,3.8,0.228
+txn_001003,395.15,3,2,1,12,0.388,60.2,food_delivery,upi,soft_decline,U28,,HDFC,,,False,Paytm,7.6,0.334
+txn_006087,633.67,7,3,1,10,0.215,48.6,ecommerce,upi,soft_decline,Y1,,HDFC,,,False,other,2.6,0.63
+txn_003220,471.67,2,2,0,33,0.206,58.3,food_delivery,card,customer_dropoff,,Rupay,Axis,True,33.0,False,,,
+txn_003967,102.94,23,5,0,33,0.281,171.8,travel,upi,customer_dropoff,,,SBI,,,False,PhonePe,48.6,0.744
+txn_001020,140.51,4,4,1,7,0.152,6.2,ecommerce,card,hard_decline,05,Visa,ICICI,True,99.6,False,,,
+txn_004356,950.58,4,1,0,27,0.39,2.5,gaming,upi,hard_decline,ZM,,SBI,,,False,GPay,29.4,0.767
+txn_005811,842.41,1,3,2,13,0.042,3.8,travel,card,hard_decline,05,Rupay,ICICI,False,48.6,False,,,
+txn_003024,104.67,15,3,0,25,0.12,4.4,subscriptions,upi,hard_decline,ZH,,PNB,,,False,Paytm,12.8,0.965
+txn_003420,1880.22,13,1,1,65,0.132,1.3,ecommerce,card,hard_decline,14,Mastercard,HDFC,False,21.8,False,,,
+txn_001636,200.79,6,2,0,5,0.392,27.3,food_delivery,upi,soft_decline,U30,,Yes Bank,,,True,Paytm,15.9,0.047
+txn_007524,2036.32,21,4,0,3,0.191,0.6,subscriptions,upi,fraud_block,59,,SBI,,,False,GPay,11.0,0.194
+txn_005175,1938.28,5,5,2,3,0.051,10.6,utilities,upi,fraud_block,59,,Yes Bank,,,False,GPay,5.7,0.276
+txn_005940,1357.03,3,6,0,1,0.318,7.6,subscriptions,upi,fraud_block,59,,HDFC,,,False,Paytm,3.6,0.067
+txn_001984,454.83,16,3,0,7,0.117,20.7,ecommerce,upi,customer_dropoff,U30,,PNB,,,False,GPay,65.4,0.564
+txn_004092,495.46,18,0,0,17,0.002,29.1,travel,upi,soft_decline,BT,,PNB,,,False,GPay,4.0,0.556
+txn_006125,4547.48,23,4,0,25,0.536,7.2,gaming,upi,hard_decline,Z9,,Yes Bank,,,False,GPay,1.0,0.949
+txn_005338,677.08,8,0,2,16,0.041,37.1,ecommerce,upi,soft_decline,U30,,Axis,,,True,GPay,2.9,0.21
+txn_002758,1996.9,23,3,0,13,0.044,1.3,utilities,card,hard_decline,05,Mastercard,ICICI,False,28.0,False,,,
+txn_007620,353.87,10,5,0,17,0.136,34.5,food_delivery,upi,customer_dropoff,ZM,,PNB,,,False,PhonePe,29.3,0.526
+txn_002839,19356.28,16,0,1,42,0.047,43.4,gaming,upi,soft_decline,XY,,PNB,,,True,PhonePe,7.3,0.249
+txn_006457,367.16,10,2,0,12,0.029,3.0,subscriptions,upi,hard_decline,Z9,,Kotak,,,True,PhonePe,5.9,0.755
+txn_005799,2925.0,2,6,1,12,0.078,8.3,food_delivery,upi,hard_decline,Z9,,HDFC,,,False,Paytm,7.8,0.662
+txn_006372,1924.74,2,3,0,1,0.075,12.4,gaming,card,fraud_block,59,Visa,SBI,True,11.6,False,,,
+txn_004896,3030.11,23,0,0,23,0.147,35.5,gaming,upi,soft_decline,U28,,ICICI,,,True,GPay,6.3,0.222
+txn_007796,4009.1,2,1,0,1,0.1,1.2,gaming,card,fraud_block,05,Rupay,IDFC First,False,4.3,False,,,
+txn_002887,620.84,10,2,1,44,0.054,35.6,travel,upi,soft_decline,U68,,PNB,,,True,PhonePe,9.8,0.31
+txn_003481,191.36,14,1,0,5,0.224,30.0,travel,upi,customer_dropoff,U68,,Kotak,,,False,PhonePe,363.6,0.409
+txn_002318,688.94,0,5,0,34,0.413,55.4,utilities,upi,soft_decline,U67,,Axis,,,True,Paytm,6.0,0.231
+txn_002843,84.77,22,3,1,35,0.131,63.0,food_delivery,upi,customer_dropoff,ZM,,PNB,,,False,PhonePe,159.8,0.524
+txn_003460,620.0,22,1,0,2,0.489,11.3,food_delivery,card,hard_decline,51,Mastercard,Axis,True,24.1,False,,,
+txn_005693,387.64,14,3,1,6,0.133,17.9,subscriptions,upi,customer_dropoff,U30,,ICICI,,,False,PhonePe,49.1,0.408
+txn_002688,633.15,8,6,1,17,0.049,57.5,gaming,upi,customer_dropoff,U30,,HDFC,,,False,Paytm,66.0,0.356
+txn_001005,458.69,6,1,0,7,0.036,34.9,subscriptions,upi,soft_decline,U68,,Yes Bank,,,True,GPay,17.0,0.461
+txn_004980,6551.5,11,3,0,7,0.102,4.1,subscriptions,card,hard_decline,05,Rupay,ICICI,False,17.3,True,,,
+txn_001010,7277.4,10,3,1,7,0.142,4.0,subscriptions,upi,hard_decline,Z7,,Yes Bank,,,False,GPay,35.2,0.606
+txn_006597,975.42,10,5,1,34,0.071,11.1,utilities,card,hard_decline,61,Visa,IDFC First,True,37.4,False,,,
+txn_006611,1731.45,22,6,0,2,0.418,0.9,travel,upi,hard_decline,Z7,,PNB,,,False,PhonePe,1.5,0.667
+txn_003342,220.51,19,1,3,1,0.314,0.4,gaming,upi,fraud_block,59,,Kotak,,,False,PhonePe,88.4,0.112
+txn_001814,1512.73,11,1,2,35,0.301,20.9,food_delivery,upi,customer_dropoff,U67,,PNB,,,True,GPay,211.9,0.334
+txn_006150,1535.98,22,1,0,21,0.049,1.9,utilities,card,hard_decline,61,Visa,ICICI,True,56.8,False,,,
+txn_001069,798.51,18,1,1,1,0.077,33.2,travel,upi,customer_dropoff,U68,,PNB,,,False,GPay,88.0,0.619
+txn_007085,3410.01,15,4,2,4,0.23,26.7,ecommerce,upi,soft_decline,U30,,ICICI,,,True,Paytm,3.9,0.36
+txn_007436,663.66,20,4,2,1,0.086,59.6,ecommerce,upi,customer_dropoff,U30,,ICICI,,,False,PhonePe,109.4,0.4
+txn_001572,6505.58,19,4,1,66,0.274,6.5,subscriptions,card,hard_decline,14,Amex,SBI,False,47.8,False,,,
+txn_005331,2453.38,3,4,0,2,0.152,10.1,ecommerce,upi,fraud_block,59,,Axis,,,False,GPay,0.9,0.181
+txn_000127,5171.51,10,6,0,2,0.059,8.0,utilities,upi,fraud_block,59,,PNB,,,False,PhonePe,103.2,0.328
+txn_000005,1132.49,0,0,1,24,0.376,51.6,food_delivery,card,customer_dropoff,,Visa,Kotak,True,35.5,True,,,
+txn_004039,1053.36,22,5,1,7,0.351,20.4,ecommerce,upi,soft_decline,XY,,SBI,,,True,Paytm,0.4,0.208
+txn_001646,292.73,2,2,2,46,0.15,30.4,travel,upi,soft_decline,U68,,ICICI,,,True,GPay,16.0,0.44
+txn_004921,2453.33,5,1,0,3,0.202,16.4,subscriptions,card,fraud_block,59,Visa,Axis,True,11.6,False,,,
+txn_003727,1159.65,21,1,1,5,0.212,21.7,ecommerce,upi,soft_decline,U67,,Axis,,,False,GPay,7.5,0.577
+txn_007258,610.18,10,5,1,25,0.297,0.3,food_delivery,upi,hard_decline,Z7,,HDFC,,,False,PhonePe,11.1,0.986
+txn_005409,2706.79,11,2,1,13,0.215,17.7,gaming,upi,soft_decline,BT,,SBI,,,True,PhonePe,2.5,0.585
+txn_007705,15.77,6,3,1,5,0.066,44.0,travel,upi,customer_dropoff,,,HDFC,,,True,GPay,107.8,0.582
+txn_007425,574.72,1,6,0,7,0.186,36.5,utilities,upi,customer_dropoff,U68,,HDFC,,,True,Paytm,569.4,0.306
+txn_006440,674.78,9,1,0,15,0.054,2.3,travel,card,hard_decline,05,Visa,Axis,False,65.7,False,,,
+txn_001559,1622.34,11,1,2,57,0.152,30.9,travel,upi,soft_decline,U30,,Axis,,,False,GPay,5.9,0.191
+txn_003932,591.31,22,0,0,34,0.098,52.3,utilities,card,soft_decline,91,Rupay,Axis,False,37.6,True,,,
+txn_002977,1515.13,12,1,3,59,0.407,4.2,gaming,upi,hard_decline,ZU,,ICICI,,,False,Paytm,1.1,0.664
+txn_005886,8246.08,23,4,0,4,0.407,4.5,ecommerce,card,fraud_block,61,Mastercard,Axis,True,9.0,False,,,
+txn_001040,3165.76,19,4,0,2,0.134,35.0,travel,upi,soft_decline,U67,,PNB,,,False,GPay,24.6,0.049
+txn_005469,3184.38,7,5,1,15,0.127,85.5,utilities,upi,customer_dropoff,,,Yes Bank,,,False,GPay,120.3,0.48
+txn_005306,1044.96,9,0,2,1,0.152,8.5,ecommerce,card,hard_decline,05,Rupay,Axis,True,27.6,False,,,
+txn_004278,2572.3,20,3,1,54,0.158,23.2,food_delivery,upi,soft_decline,U28,,Kotak,,,True,GPay,6.9,0.055
+txn_005215,2745.61,2,3,0,2,0.233,4.4,utilities,upi,fraud_block,Z8,,Yes Bank,,,False,GPay,20.8,0.3
+txn_006274,5058.99,3,6,1,4,0.131,0.4,gaming,card,fraud_block,05,Rupay,SBI,True,6.7,False,,,
+txn_007198,442.61,18,1,1,28,0.055,51.0,food_delivery,card,soft_decline,96,Amex,Kotak,False,54.3,True,,,
+txn_007203,7073.79,16,1,0,54,0.113,38.5,subscriptions,upi,soft_decline,UT,,Kotak,,,True,GPay,6.6,0.494
+txn_002045,510.89,21,2,2,10,0.215,61.3,utilities,upi,soft_decline,U30,,PNB,,,False,PhonePe,4.8,0.104
+txn_002302,2626.45,4,3,2,6,0.301,19.3,subscriptions,upi,customer_dropoff,,,Yes Bank,,,True,PhonePe,58.5,0.163
+txn_004330,1535.06,14,4,1,47,0.15,10.2,gaming,upi,hard_decline,ZM,,PNB,,,False,PhonePe,5.3,0.737
+txn_003929,2366.75,12,2,0,7,0.292,2.9,subscriptions,upi,fraud_block,ZU,,PNB,,,False,PhonePe,23.9,0.448
+txn_005314,1225.7,14,5,0,3,0.164,2.6,food_delivery,upi,fraud_block,59,,ICICI,,,False,GPay,76.4,0.46
+txn_006907,925.46,11,0,0,1,0.037,70.4,travel,upi,customer_dropoff,,,ICICI,,,False,other,22.2,0.091
+txn_005194,1290.03,6,3,0,47,0.144,111.2,ecommerce,upi,customer_dropoff,U68,,SBI,,,False,Paytm,12.6,0.145
+txn_005457,247.17,20,6,0,9,0.037,4.3,food_delivery,upi,hard_decline,ZM,,PNB,,,False,PhonePe,5.4,0.878
+txn_007991,3342.79,15,4,0,37,0.015,15.2,food_delivery,upi,soft_decline,XY,,Axis,,,True,Paytm,8.1,0.344
+txn_001087,694.09,7,5,1,8,0.21,76.1,gaming,upi,customer_dropoff,,,Yes Bank,,,False,Paytm,288.0,0.172
+txn_007680,720.6,13,5,3,2,0.366,6.5,ecommerce,card,hard_decline,14,Mastercard,HDFC,False,48.8,False,,,
+txn_006470,1621.48,14,2,1,21,0.305,80.5,utilities,upi,customer_dropoff,,,PNB,,,False,other,40.2,0.058
+txn_000404,4235.44,6,0,0,2,0.119,3.5,food_delivery,card,fraud_block,59,Visa,Axis,True,5.6,False,,,
+txn_003718,5721.75,2,3,0,1,0.166,4.0,travel,card,fraud_block,59,Visa,IDFC First,True,2.3,False,,,
+txn_000541,178.49,18,4,1,1,0.298,60.1,utilities,upi,customer_dropoff,,,Yes Bank,,,False,PhonePe,6.3,0.664
+txn_000967,2317.6,1,1,1,1,0.084,0.9,travel,upi,fraud_block,59,,Axis,,,False,GPay,7.8,0.653
+txn_005948,1597.39,17,6,0,1,0.302,52.4,ecommerce,upi,customer_dropoff,,,Kotak,,,True,GPay,279.3,0.19
+txn_002059,1242.69,23,0,3,4,0.506,52.3,food_delivery,upi,soft_decline,UT,,SBI,,,False,GPay,2.0,0.227
+txn_003032,7456.56,17,5,1,2,0.053,23.2,utilities,card,fraud_block,61,Mastercard,HDFC,False,8.4,False,,,
+txn_006799,402.77,4,6,0,19,0.129,46.8,utilities,card,soft_decline,96,Rupay,Kotak,False,26.5,False,,,
+txn_007099,1377.17,8,4,1,1,0.227,2.6,gaming,card,hard_decline,51,Visa,ICICI,False,37.2,False,,,
+txn_004867,900.17,13,4,0,25,0.043,33.5,ecommerce,upi,customer_dropoff,U30,,PNB,,,False,GPay,133.7,0.583
+txn_004667,1672.44,12,3,1,24,0.13,23.9,utilities,upi,soft_decline,XY,,Yes Bank,,,True,GPay,4.8,0.614
+txn_004418,818.2,2,3,2,8,0.252,2.2,gaming,upi,fraud_block,ZI,,Yes Bank,,,False,PhonePe,46.0,0.585
+txn_007682,3575.46,23,5,1,2,0.154,0.4,ecommerce,upi,hard_decline,ZH,,Yes Bank,,,False,PhonePe,22.3,0.824
+txn_000607,1680.49,16,0,0,1,0.259,5.2,gaming,upi,hard_decline,ZH,,Yes Bank,,,False,PhonePe,40.0,0.618
+txn_002566,932.15,0,3,0,119,0.059,16.4,utilities,card,hard_decline,14,Rupay,Axis,False,19.1,False,,,
+txn_001214,4478.57,5,5,0,2,0.193,0.6,subscriptions,card,fraud_block,05,Amex,IDFC First,True,7.5,False,,,
+txn_003379,2069.94,14,0,0,13,0.144,90.7,travel,upi,customer_dropoff,,,Kotak,,,False,other,78.2,0.074
+txn_005468,318.41,8,4,0,37,0.215,45.7,subscriptions,upi,soft_decline,U68,,PNB,,,True,GPay,5.0,0.363
+txn_007945,389.95,0,3,0,3,0.264,13.9,utilities,upi,customer_dropoff,,,SBI,,,True,GPay,22.4,0.165
+txn_001181,909.61,23,3,0,11,0.189,0.3,gaming,upi,hard_decline,ZU,,HDFC,,,False,GPay,48.1,0.751
+txn_007060,2342.96,19,2,1,36,0.124,30.6,travel,upi,customer_dropoff,,,Kotak,,,False,PhonePe,25.0,0.661
+txn_001034,147.18,3,4,0,28,0.274,37.8,gaming,card,soft_decline,91,Visa,HDFC,False,70.5,False,,,
+txn_001121,1903.89,6,3,0,8,0.069,93.8,utilities,upi,customer_dropoff,ZM,,Kotak,,,False,GPay,42.8,0.605
+txn_007664,7486.11,6,6,0,24,0.096,17.0,subscriptions,upi,soft_decline,BT,,SBI,,,False,GPay,23.4,0.308
+txn_003185,7183.18,5,6,3,3,0.098,41.4,travel,upi,customer_dropoff,U30,,HDFC,,,True,Paytm,265.6,0.297
+txn_000200,2248.93,3,6,1,16,0.171,75.2,utilities,upi,customer_dropoff,U67,,Kotak,,,False,PhonePe,76.8,0.503
+txn_007188,757.67,13,2,0,6,0.255,107.0,travel,upi,customer_dropoff,,,Yes Bank,,,False,PhonePe,225.0,0.794
+txn_005258,3181.02,2,2,1,1,0.141,0.3,food_delivery,card,fraud_block,05,Mastercard,Kotak,True,4.3,False,,,
+txn_006982,831.63,3,3,1,33,0.118,82.2,gaming,upi,customer_dropoff,U30,,Kotak,,,False,PhonePe,155.6,0.369
+txn_001792,120.71,18,2,1,17,0.262,0.7,ecommerce,card,hard_decline,54,Rupay,Kotak,False,51.3,False,,,
+txn_001750,585.22,7,0,1,4,0.302,43.4,gaming,upi,soft_decline,BT,,Kotak,,,True,PhonePe,31.4,0.609
+txn_002051,1445.67,16,3,0,7,0.398,6.3,ecommerce,upi,hard_decline,ZU,,PNB,,,False,GPay,18.5,0.738
+txn_003389,1530.2,15,6,0,2,0.148,1.0,food_delivery,upi,hard_decline,ZU,,ICICI,,,True,GPay,5.2,0.866
+txn_001277,532.81,20,5,0,29,0.227,42.9,ecommerce,upi,soft_decline,BT,,SBI,,,False,PhonePe,12.6,0.76
+txn_007153,715.31,7,4,0,11,0.276,64.7,travel,upi,customer_dropoff,,,HDFC,,,False,PhonePe,42.8,0.211
+txn_007182,3857.47,3,1,2,22,0.127,10.2,gaming,card,hard_decline,54,Visa,HDFC,False,64.4,False,,,
+txn_003282,5027.05,3,2,2,5,0.159,1.6,subscriptions,card,hard_decline,14,Mastercard,Kotak,False,55.2,False,,,
+txn_001589,245.53,15,0,1,24,0.158,22.8,subscriptions,upi,customer_dropoff,ZM,,Axis,,,False,GPay,28.4,0.118
+txn_002137,454.5,13,1,1,20,0.202,45.9,ecommerce,upi,customer_dropoff,UT,,Kotak,,,True,GPay,19.4,0.386
+txn_004076,2534.57,4,1,0,35,0.083,0.7,ecommerce,upi,hard_decline,ZH,,Axis,,,False,PhonePe,8.3,0.595
+txn_006674,367.54,19,3,1,5,0.582,68.1,food_delivery,upi,customer_dropoff,U30,,ICICI,,,False,GPay,90.9,0.396
+txn_007541,1067.81,16,5,0,40,0.308,54.0,food_delivery,upi,customer_dropoff,,,SBI,,,True,GPay,35.1,0.565
+txn_001397,413.34,10,0,0,10,0.168,45.7,gaming,upi,soft_decline,Y1,,ICICI,,,True,PhonePe,10.8,0.445
+txn_007100,103.97,6,5,2,11,0.207,37.1,travel,upi,soft_decline,U68,,Kotak,,,True,GPay,1.2,0.804
+txn_007699,189.82,10,4,0,5,0.094,75.3,subscriptions,upi,customer_dropoff,U30,,Axis,,,False,PhonePe,64.7,0.143
+txn_005095,576.16,17,2,0,2,0.229,0.8,ecommerce,upi,hard_decline,Z7,,ICICI,,,False,GPay,6.6,0.664
+txn_004454,3564.61,16,4,0,4,0.103,29.1,utilities,upi,customer_dropoff,,,SBI,,,False,PhonePe,257.9,0.663
+txn_003112,441.2,20,6,0,14,0.091,34.4,gaming,upi,soft_decline,BT,,Kotak,,,True,other,10.7,0.769
+txn_002485,965.9,8,1,1,27,0.301,4.0,utilities,upi,hard_decline,Z7,,ICICI,,,False,PhonePe,25.8,0.543
+txn_003826,773.09,13,4,2,2,0.045,4.2,travel,card,fraud_block,59,Visa,ICICI,True,3.8,False,,,
+txn_007486,623.8,21,1,2,26,0.304,41.9,food_delivery,upi,soft_decline,U28,,HDFC,,,True,GPay,3.9,0.795
+txn_004548,309.66,6,4,1,13,0.455,41.7,subscriptions,upi,soft_decline,Y1,,HDFC,,,False,PhonePe,2.5,0.453
+txn_001546,452.43,14,6,1,19,0.166,17.0,travel,upi,soft_decline,U30,,Yes Bank,,,True,GPay,7.2,0.494
+txn_006630,3657.22,18,4,1,39,0.216,35.8,subscriptions,upi,soft_decline,UT,,PNB,,,False,PhonePe,7.3,0.291
+txn_007270,1145.86,9,1,1,4,0.355,39.5,food_delivery,card,soft_decline,91,Visa,Axis,False,18.3,True,,,
+txn_000914,767.75,12,2,0,13,0.01,34.9,subscriptions,upi,soft_decline,Y1,,ICICI,,,False,GPay,6.8,0.29
+txn_006554,1769.65,2,5,0,2,0.093,12.6,subscriptions,card,fraud_block,59,Visa,SBI,True,13.0,False,,,
+txn_000339,1033.64,19,5,1,8,0.18,45.1,food_delivery,upi,customer_dropoff,ZM,,Axis,,,True,GPay,149.8,0.725
+txn_002677,1897.55,12,3,0,5,0.073,17.6,utilities,upi,hard_decline,ZM,,PNB,,,False,GPay,52.1,0.968
+txn_003099,356.32,20,0,0,3,0.088,83.7,ecommerce,upi,soft_decline,Y1,,PNB,,,False,GPay,0.4,0.262
+txn_001253,1329.14,21,4,0,2,0.034,0.5,ecommerce,card,fraud_block,05,Visa,ICICI,True,7.8,False,,,
+txn_007710,33.59,15,6,1,9,0.129,0.3,travel,card,hard_decline,05,Rupay,ICICI,False,49.9,False,,,
+txn_004588,2032.67,7,2,2,1,0.147,7.7,utilities,card,hard_decline,14,Mastercard,ICICI,False,39.4,False,,,
+txn_000260,4667.72,21,4,0,21,0.19,36.7,travel,card,soft_decline,91,Visa,HDFC,True,47.0,True,,,
+txn_004602,2473.5,1,6,1,42,0.212,57.2,utilities,upi,customer_dropoff,,,Kotak,,,True,GPay,31.7,0.449
+txn_002332,1381.44,13,2,0,30,0.161,62.8,gaming,upi,customer_dropoff,U68,,Yes Bank,,,False,PhonePe,9.0,0.71
+txn_005981,1803.32,19,4,2,3,0.076,51.0,subscriptions,card,customer_dropoff,,Visa,SBI,True,105.2,True,,,
+txn_005624,4764.05,18,1,1,28,0.388,23.9,ecommerce,upi,soft_decline,Y1,,PNB,,,True,GPay,5.2,0.148
+txn_005462,1007.1,5,5,0,17,0.389,60.7,utilities,upi,soft_decline,U67,,Yes Bank,,,True,Paytm,1.2,0.132
+txn_004463,697.51,2,6,0,5,0.202,83.7,gaming,upi,soft_decline,U30,,SBI,,,True,GPay,2.1,0.362
+txn_001674,1417.13,6,1,0,35,0.168,29.0,utilities,upi,soft_decline,UT,,ICICI,,,True,Paytm,2.7,0.082
+txn_007655,1980.27,10,5,0,8,0.347,62.8,travel,upi,customer_dropoff,,,Axis,,,False,GPay,60.1,0.735
+txn_007385,619.23,12,0,1,13,0.078,41.7,subscriptions,upi,soft_decline,U28,,HDFC,,,True,GPay,2.8,0.469
+txn_000391,2685.9,15,2,0,33,0.446,1.1,travel,card,hard_decline,61,Rupay,Axis,False,72.8,False,,,
+txn_007489,424.59,2,0,1,1,0.317,3.7,food_delivery,upi,fraud_block,59,,HDFC,,,False,PhonePe,9.7,0.448
+txn_005473,1839.08,4,5,0,183,0.279,35.6,food_delivery,card,soft_decline,05,Amex,Axis,True,39.0,False,,,
+txn_002157,173.95,6,0,1,1,0.026,28.0,gaming,upi,soft_decline,Y1,,PNB,,,True,PhonePe,2.4,0.376
+txn_001900,2286.58,20,5,0,8,0.242,94.9,ecommerce,upi,customer_dropoff,ZM,,Yes Bank,,,True,other,18.4,0.618
+txn_001919,1151.58,2,3,0,54,0.028,51.3,ecommerce,upi,customer_dropoff,U67,,Axis,,,True,GPay,127.0,0.514
+txn_004468,1387.89,3,4,0,2,0.256,7.7,ecommerce,upi,hard_decline,ZH,,PNB,,,False,PhonePe,5.4,0.537
+txn_000217,8177.05,20,1,1,6,0.324,2.5,utilities,card,fraud_block,59,Visa,SBI,True,15.6,False,,,
+txn_002607,3653.67,11,2,1,39,0.163,0.3,food_delivery,upi,hard_decline,Z9,,HDFC,,,False,Paytm,0.1,0.518
+txn_006599,226.06,11,4,0,13,0.26,145.1,gaming,upi,customer_dropoff,U30,,HDFC,,,True,GPay,106.7,0.292
+txn_004658,1128.65,5,1,0,1,0.323,1.7,food_delivery,upi,fraud_block,ZI,,Axis,,,False,PhonePe,6.6,0.171
+txn_002876,476.42,8,3,1,2,0.384,1.2,travel,card,fraud_block,59,Visa,Axis,True,12.1,False,,,
+txn_007533,1858.24,4,2,0,2,0.097,13.0,travel,card,fraud_block,59,Visa,SBI,True,3.0,False,,,
+txn_007551,1368.53,12,2,1,9,0.02,113.8,travel,upi,customer_dropoff,,,ICICI,,,False,PhonePe,47.4,0.601

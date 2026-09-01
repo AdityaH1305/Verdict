@@ -148,6 +148,17 @@
          background: rgba(244,162,97,.10); border: 1px solid rgba(244,162,97,.32);
          font-size: 12.5px; }
 
+  /* Drift badge -- intentionally minimal; a UI rebuild is planned. */
+  .drift { display: inline-flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+           padding: 7px 11px; border-radius: 8px; font-size: 12.5px;
+           border: 1px solid var(--line); background: var(--panel-2); margin-top: 14px; }
+  .drift b { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+  .drift .LOW { color: var(--auto); }
+  .drift .MODERATE { color: var(--nudge); }
+  .drift .HIGH { color: var(--before); }
+  .drift .msg { color: var(--muted); }
+  .drift .warn { color: var(--esc); }
+
   .live-out { margin-top: 10px; padding: 11px 13px; border-radius: 8px;
               background: rgba(108,142,227,.09); border: 1px solid rgba(108,142,227,.3); }
   .muted { color: var(--muted); }
@@ -169,6 +180,7 @@
       <label class="sub" for="batch">Batch</label>
       <select id="batch">
         <option value="demo" selected>Demo batch (pinned)</option>
+        <option value="drift">Drift demo (constructed shift)</option>
         <option value="100">100 random</option>
         <option value="300">300 random</option>
         <option value="500">500 random</option>
@@ -197,6 +209,7 @@
         <div class="stat"><div class="v" id="rate">—</div><div class="k">of acted-on recovered</div></div>
       </div>
     </div>
+    <div id="drift"></div>
   </section>
 
   <!-- 2. breakdown -->
@@ -409,6 +422,28 @@ function intervalCell(d) {
     </div>`;
 }
 
+// Read-only monitoring badge. Deliberately minimal -- a UI rebuild is planned.
+function renderDrift(d, constructed) {
+  const el = $("#drift");
+  if (!d || !d.overall_verdict) { el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="drift">
+      <b class="${d.overall_verdict}">drift: ${d.overall_verdict}</b>
+      <span class="msg">max PSI ${d.max_psi} &middot; ${d.driver_detail}</span>
+      ${constructed ? `<span class="warn">&mdash; this batch's drift was
+        introduced deliberately for demonstration, not observed</span>` : ""}
+    </div>`;
+}
+
+async function loadDrift(constructed) {
+  try {
+    renderDrift(await getJSON("/stats/drift"), constructed);
+  } catch {
+    $("#drift").innerHTML = `<div class="drift"><span class="msg">Drift monitor
+      unavailable &mdash; run <span class="mono">python scripts/train.py</span>
+      to build the baseline.</span></div>`;
+  }
+}
+
 function renderFeed() {
   const fa = $("#f-action").value, fc = $("#f-cat").value;
   const rows = FEED.filter(d =>
@@ -547,7 +582,8 @@ function fillFilters() {
 // ------------------------------------------------------------------ load ---
 async function run() {
   const choice = $("#batch").value;
-  const pinned = choice === "demo";
+  const constructed = choice === "drift";
+  const pinned = choice === "demo" || constructed;
   const btn = $("#run");
   btn.disabled = true;
   $("#status").textContent = pinned
@@ -557,9 +593,11 @@ async function run() {
     // seed first: it populates the audit feed the decision table reads.
     // The pinned batch is committed data, so the numbers match the script every
     // time; the random options re-sample on each click.
-    const seeded = pinned
-      ? await getJSON(`/simulate/demo`, { method: "POST" })
-      : await getJSON(`/simulate/seed?n=${choice}`, { method: "POST" });
+    const seeded = constructed
+      ? await getJSON(`/simulate/drift-demo`, { method: "POST" })
+      : pinned
+        ? await getJSON(`/simulate/demo`, { method: "POST" })
+        : await getJSON(`/simulate/seed?n=${choice}`, { method: "POST" });
     const n = seeded.count;
     FEATURES = {};
     for (const row of seeded.decisions || []) FEATURES[row.transaction_id] = row;
@@ -569,6 +607,7 @@ async function run() {
       getJSON(`/decisions?limit=${FEED_LIMIT}`),
     ]);
     renderHeadline(rev);
+    loadDrift(constructed);          // read-only; failure here must not break the page
     renderBreakdown(brk);
     renderActions(brk);
     FEED = feed.decisions || [];
@@ -578,7 +617,10 @@ async function run() {
     // Surface that this was a fresh draw -- the batch used to be a fixed slice,
     // so "did that actually re-run?" is a fair question to answer in the UI.
     const ids = FEED.map(d => d.transaction_id);
-    $("#status").innerHTML = pinned
+    $("#status").innerHTML = constructed
+      ? `${n} transactions &middot; <span class="warn">constructed drift
+         scenario</span>`
+      : pinned
       ? `${n} transactions &middot; <span class="muted">pinned demo batch —
          reproducible</span>`
       : `${n} transactions &middot; <span class="mono">${ids[0] ?? "—"}</span> …

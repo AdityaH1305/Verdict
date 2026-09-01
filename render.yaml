@@ -32,6 +32,7 @@ services:
       python scripts/prepare_data.py
       python scripts/train.py
       python scripts/retry_storm_demo.py
+      python scripts/make_drift_demo.py
     # $PORT is injected by Render; 0.0.0.0 is required or the health check
     # cannot reach the process.
     startCommand: uvicorn src.api.main:app --host 0.0.0.0 --port $PORT

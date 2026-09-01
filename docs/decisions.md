@@ -757,6 +757,136 @@ revenue **₹1,00,744 and acted-on 161 are unchanged**, so the spoken number is
 unaffected. `scripts/make_demo_batch.py` still selects seed 110, so the pinned
 batch is stable.
 
+## Day 8 — drift monitoring
+
+Both models were trained once, on one batch, and nothing checked whether later
+batches still resembled it. A shifted population would have been scored
+confidently and silently. This adds a **read-only** observer: no model, no
+threshold, and no decision logic changed.
+
+### Why PSI everywhere, rather than PSI + a KS test
+
+- **One scale.** PSI is comparable across mixed types, so a single combined
+  verdict means something. A KS statistic and a PSI score are not on the same
+  scale and cannot honestly be maxed or averaged together.
+- **KS is continuous-only.** Three of the six monitored features are categorical
+  (`payment_method`, `error_code` per rail, `failure_category`), so a KS test
+  would force a second metric and then a rule for reconciling two scales.
+- **It is the domain convention.** PSI with the 0.10 / 0.25 cutoffs is standard
+  in credit-risk and fraud model monitoring — the domain this system sits in — so
+  the numbers are readable by anyone who already monitors scorecards.
+
+Thresholds are the **conventional** cutoffs, not values invented here: `< 0.10`
+stable, `0.10–0.25` moderate, `> 0.25` significant.
+
+**Combined verdict is the maximum, not the average.** PSI thresholds are defined
+per feature, so averaging lets one badly drifted feature hide behind several
+stable ones — precisely the failure a monitor exists to prevent. The response
+names the driving feature so the verdict is actionable.
+
+### Which features are monitored, and why
+
+Measured against the generator rather than picked by hand. Features split by
+whether they vary with `failure_category` at all:
+
+| Carries signal | Spread | Drawn uniformly | Spread |
+|---|---|---|---|
+| `seconds_to_failure` | 2.90 | `customer_past_failure_rate` | 0.08 |
+| `amount` | 1.76 | `issuing_bank` | 0.059 |
+| `payment_method` | 0.344 | `psp_app` | 0.059 |
+| `error_code` | entropy 2.92 | `card_network` | 0.044 |
+| `failure_category` | (the label) | `merchant_category` | 0.032 |
+
+The right column is drawn independently of everything in the generator; those
+features would only move if shifted by hand, and seven no-signal features would
+dilute a combined score.
+
+Also excluded: `card_age_months`, `time_since_app_switch`,
+`daily_limit_utilization`, `is_3ds_flow`. These *do* carry signal but each exists
+for only one rail (45–55% populated), so a change in the card/UPI mix would
+surface as drift in all four at once — one shift counted five times.
+`error_code` avoids that by being monitored **per payment method**.
+
+### The near-miss: PSI was measuring sample size, not drift
+
+The first working version reported the *representative* pinned batch as
+**MODERATE (0.179)**. Nothing had drifted — that was noise.
+
+Measured across 60 same-distribution 300-row batches:
+
+| Feature | bins | median PSI | p90 |
+|---|---|---|---|
+| `error_code[upi]` | 17 | **0.139** | **0.252** |
+| `error_code[card]` | 9 | 0.041 | 0.083 |
+| others | 2–10 | ≤ 0.028 | ≤ 0.049 |
+
+`error_code[upi]` would have reported MODERATE half the time and HIGH one run in
+ten with **zero** actual drift. Cause: 17 levels against ~135 UPI rows leaves
+3–6 expected observations in the rare bins, and PSI is unstable there.
+
+Fix: rare levels (training share < 5%) are merged into an `__other__` bucket in
+the baseline. Five percent of a rail in a 300-row batch is roughly 7 expected
+observations, the conventional minimum for a stable PSI bin. That brings
+`error_code[upi]` to median 0.043 / p90 0.086 and the pinned batch to **LOW
+(0.083)**. `tests/test_drift.py::test_noise_floor_stays_below_the_stable_cutoff`
+keeps it there.
+
+A monitor that alarms on every batch is worse than no monitor, because people
+learn to ignore it.
+
+### Other implementation notes
+
+- **Nulls are a real bucket.** `error_code` is ~11% null *by design* — a customer
+  who abandons never reaches the bank for a decline code — so dropping nulls
+  would hide a shift in abandonment rate.
+- **Unseen levels** land in `__other__` rather than being dropped: a brand-new
+  error code is a shift and should register as one.
+- **Empty bins** are guaranteed at these batch sizes, so proportions are floored
+  at `1e-4` (the conventional treatment) — a vanished category scores as large
+  drift instead of `inf`.
+- **Bin edges are stored in the baseline**, so the detector never needs
+  `train.csv` at runtime and both distributions are always bucketed identically.
+  Re-deriving quantiles per batch would make every batch look identical to
+  itself and report no drift ever.
+
+### Caveat: `failure_category` is label drift, not input drift
+
+It is the ground-truth label. Monitoring it is possible here only because these
+batches are held-out labelled rows; production scoring would not have it. That
+limitation is recorded in the baseline itself and returned by the API, not just
+written down here.
+
+### The drift scenario is CONSTRUCTED
+
+`data/demo/drift_demo_batch.csv` is built by `scripts/make_drift_demo.py`, which
+re-weights which held-out rows get sampled — UPI-heavy, inflated fraud rate,
+higher amounts. **No feature values are invented**; every row is a real generated
+transaction and only the population mix differs, so the shift is a genuine
+distribution change rather than a fabrication.
+
+**This drift was introduced deliberately. It was not observed in production or in
+real traffic.** Synthetic transactions cannot drift on their own — the generator
+draws every batch from one fixed distribution — so demonstrating the monitor
+requires manufacturing something for it to catch. The honest claim is "here is
+the monitor detecting a shift we introduced on purpose". That labelling is
+enforced by a test, not just convention.
+
+| | Pinned (representative) | Shifted (constructed) |
+|---|---|---|
+| UPI share | 0.43 | 0.75 |
+| Fraud share | 0.11 | 0.24 |
+| Median amount | ₹674 | ₹1,252 |
+| Verdict | **LOW** (0.083) | **HIGH** (0.393) |
+
+### Read-only, asserted rather than claimed
+
+`GET /stats/drift` scores `_current_batch()` — the same stored batch the other
+`/stats/*` endpoints read. Deliberately not a second data path: fetching its own
+rows is exactly the shape that produced the `.head(n)` defect. Tests assert that
+agent decisions are byte-identical with and without drift computed, that the
+detector does not mutate the batch, and that nothing under `src/agent/` imports
+`monitoring` — the observer may depend on the pipeline, never the reverse.
+
 ## Open decisions (fill in as you go)
 
 - ~~Exact classifier algorithm~~ — **locked Day 2: XGBoost**

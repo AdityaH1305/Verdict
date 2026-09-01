@@ -12,6 +12,9 @@ TEST_DATA = os.path.join(PROCESSED_DIR, "test.csv")
 MODELS_DIR = os.path.join(ROOT, "models")
 CLASSIFIER_PATH = os.path.join(MODELS_DIR, "failure_classifier.pkl")
 RECOVERY_MODEL_PATH = os.path.join(MODELS_DIR, "recovery_success_model.pkl")
+# Drift reference stats. A build artifact of one training run, like the models
+# it sits beside -- written by scripts/train.py, gitignored for the same reason.
+BASELINE_PATH = os.path.join(MODELS_DIR, "training_baseline.json")
 
 REPORTS_DIR = os.path.join(ROOT, "reports")
 METRICS_PATH = os.path.join(REPORTS_DIR, "metrics.json")

@@ -73,6 +73,10 @@ STABLE = [
     ("GET", "/health", "server state, not sampled data"),
     ("POST", "/simulate/demo",
      "the pinned pitch batch -- being perfectly repeatable is its entire purpose"),
+    ("POST", "/simulate/drift-demo",
+     "the constructed drift scenario -- a committed batch, so repeatable like the pinned one"),
+    ("GET", "/reports/drift-comparison",
+     "a committed report, not a live computation"),
 ]
 
 # Endpoints whose variability is governed by another endpoint, so testing them
@@ -81,6 +85,7 @@ DERIVED = {
     "/stats/breakdown": "describes the batch chosen by /simulate/seed",
     "/stats/recovered-revenue": "describes the batch chosen by /simulate/seed",
     "/decisions": "replays the audit log written by /simulate/seed",
+    "/stats/drift": "scores the batch chosen by /simulate/*",
     "/decide": "caller supplies the transaction; nothing is sampled",
     "/simulate/batch": "caller supplies the transactions; nothing is sampled",
 }

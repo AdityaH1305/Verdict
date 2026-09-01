@@ -27,7 +27,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from src.agent.llm_adapter import TemplateAdapter, get_adapter, load_env  # noqa: E402
 from src.agent.recovery_agent import RecoveryAgent  # noqa: E402
-from src.paths import REPORTS_DIR, ROOT, TEST_DATA  # noqa: E402
+from src.monitoring.baseline import load_baseline  # noqa: E402
+from src.monitoring.drift_detector import detect_drift  # noqa: E402
+from src.paths import BASELINE_PATH, REPORTS_DIR, ROOT, TEST_DATA  # noqa: E402
 
 DASHBOARD_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dashboard"
@@ -35,6 +37,10 @@ DASHBOARD_DIR = os.path.join(
 DASHBOARD_INDEX = os.path.join(DASHBOARD_DIR, "index.html")
 RETRY_STORM_REPORT = os.path.join(REPORTS_DIR, "retry_storm.json")
 DEMO_BATCH_CSV = os.path.join(ROOT, "data", "demo", "demo_batch.csv")
+# CONSTRUCTED batch used only to demonstrate the drift monitor firing.
+# Its drift was introduced deliberately; it is not observed traffic.
+DRIFT_DEMO_CSV = os.path.join(ROOT, "data", "demo", "drift_demo_batch.csv")
+DRIFT_COMPARISON_REPORT = os.path.join(REPORTS_DIR, "drift_comparison.json")
 
 STATE: Dict[str, Any] = {"agent": None, "bulk_agent": None, "error": None}
 
@@ -352,6 +358,82 @@ def simulate_demo():
         "decisions": _records(decisions.drop(
             columns=["failure_category", "retry_success"], errors="ignore")),
     }
+
+
+@app.post("/simulate/drift-demo")
+def simulate_drift_demo():
+    """
+    Load the CONSTRUCTED shifted batch, to demonstrate the drift monitor firing.
+
+    Its drift was introduced deliberately by scripts/make_drift_demo.py -- it was
+    NOT observed in production or in real traffic. Synthetic transactions cannot
+    drift on their own, so showing the monitor working requires manufacturing
+    something for it to catch.
+
+    Goes through exactly the same path as /simulate/demo, so /stats/drift and
+    every other panel then describe this batch with no separate plumbing.
+    """
+    if not os.path.exists(DRIFT_DEMO_CSV):
+        raise HTTPException(
+            status_code=404,
+            detail="No drift demo batch. Run: python scripts/make_drift_demo.py",
+        )
+
+    agent = _bulk_agent()
+    agent.audit_log.clear()
+
+    df = pd.read_csv(DRIFT_DEMO_CSV)
+    STATE["batch"] = df
+    decisions = agent.decide_batch(df, log=True, explain=True)
+
+    return {
+        "count": int(len(decisions)),
+        "pinned": True,
+        "constructed": True,
+        "warning": "This batch's drift was introduced deliberately for "
+                   "demonstration. It is not observed traffic.",
+        "action_mix": decisions["action"].value_counts().to_dict(),
+        "decisions": _records(decisions.drop(
+            columns=["failure_category", "retry_success"], errors="ignore")),
+    }
+
+
+@app.get("/stats/drift")
+def drift(n: int = Query(default=500, ge=1, le=2000)):
+    """
+    PSI drift of the current batch against the training distribution.
+
+    Read-only: this observes the batch and reports. It reads no model, changes
+    no threshold, and cannot alter a decision.
+
+    Scores `_current_batch()` -- the same stored batch the other /stats/*
+    endpoints read. Deliberately not a second data path: fetching its own rows
+    is exactly the shape that produced the `.head(n)` defect, and would let the
+    drift verdict describe different transactions than the panel beside it.
+    """
+    baseline = load_baseline(BASELINE_PATH)
+    if baseline is None:
+        raise HTTPException(
+            status_code=503,
+            detail="No training baseline. Run: python scripts/train.py",
+        )
+
+    result = detect_drift(baseline, _current_batch(n))
+    result["baseline_train_rows"] = baseline.get("n_train_rows")
+    result["label_drift_note"] = baseline.get("label_drift_note")
+    return result
+
+
+@app.get("/reports/drift-comparison")
+def drift_comparison_report():
+    """Committed side-by-side: representative batch vs the constructed shift."""
+    if not os.path.exists(DRIFT_COMPARISON_REPORT):
+        raise HTTPException(
+            status_code=404,
+            detail="No drift comparison. Run: python scripts/make_drift_demo.py",
+        )
+    with open(DRIFT_COMPARISON_REPORT) as f:
+        return json.load(f)
 
 
 @app.get("/stats/breakdown")

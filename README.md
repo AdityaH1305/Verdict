@@ -124,6 +124,7 @@ src/
   agent/            # decision logic + LLM adapter interface
   api/              # backend serving layer
   dashboard/        # single-file dashboard (no build step), served at GET /
+  monitoring/       # PSI drift detection -- read-only, observes only
   error_taxonomy.py # grounded error_code -> meaning, what the LLM is held to
   features.py       # shared feature spec + encoder (one definition, both models)
   paths.py          # canonical project paths
@@ -131,7 +132,7 @@ models/           # saved trained model artifacts (created by train.py)
 reports/          # confusion matrix, calibration curve, action mix, retry storm
 docs/             # architecture doc, decisions log, deployment, "what broke"
 scripts/          # prepare_data, train, evaluate_agent, retry_storm_demo,
-                  #   make_demo_batch, check_llm
+                  #   make_demo_batch, make_drift_demo, check_llm
 tests/            # guard tests for the architectural hard rules
 ```
 
@@ -154,6 +155,7 @@ python scripts/prepare_data.py                        # -> data/processed/{train
 python scripts/train.py                               # -> models/*.pkl, reports/*
 python scripts/evaluate_agent.py                      # -> action mix + revenue
 python scripts/retry_storm_demo.py                    # -> retry-storm before/after
+python scripts/make_drift_demo.py                     # -> constructed drift scenario
 pytest tests/
 ```
 
@@ -175,7 +177,8 @@ grounded "why".
 `POST /decide` returns a decision for one failed transaction; `POST /simulate/seed`
 replays held-out transactions for the demo; `GET /stats/breakdown` and
 `GET /stats/recovered-revenue` back the dashboard; `GET /decisions` is the audit
-feed; `GET /reports/retry-storm` serves the before/after numbers.
+feed; `GET /reports/retry-storm` serves the before/after numbers;
+`GET /stats/drift` reports PSI drift of the current batch against training.
 
 Normal dashboard use makes **zero** live-provider calls — everything that loops
 is served by an offline template adapter, with live Gemini reserved for the
@@ -293,6 +296,41 @@ Both adjustments move between actions of the same kind, so **recovered revenue i
 identical with the rule on or off** — verified on the full test set and the demo
 batch. Passing no interval reproduces the original behaviour exactly.
 
+### Drift monitoring
+
+The models were trained once, on one batch. `GET /stats/drift` checks whether the
+batch currently loaded still resembles that training distribution, using
+**PSI (Population Stability Index)** on every monitored feature — the standard
+metric in credit-risk and fraud model monitoring, with its conventional cutoffs
+(`< 0.10` stable, `0.10–0.25` moderate, `> 0.25` significant).
+
+PSI is used for *every* feature rather than mixing in a KS test, so all six sit
+on one scale and a combined verdict actually means something; KS is
+continuous-only and three of the six are categorical. The overall verdict is the
+**maximum**, not the average — averaging lets one badly drifted feature hide
+behind stable ones.
+
+| | Pinned batch | Constructed shift |
+|---|---|---|
+| UPI share | 0.43 | 0.75 |
+| Fraud share | 0.11 | 0.24 |
+| Verdict | **LOW** (0.083) | **HIGH** (0.393) |
+
+The shifted batch in the dashboard's batch selector is **constructed on purpose**
+(`scripts/make_drift_demo.py`) by re-weighting which held-out rows get sampled.
+No values are invented, but the drift was introduced deliberately — it was not
+observed in real traffic, and synthetic data cannot drift on its own.
+
+Entirely read-only: it reads no model, changes no threshold, and cannot alter a
+decision. Tests assert agent output is byte-identical with and without it, and
+that nothing in `src/agent/` imports the monitoring package.
+
+One near-miss worth knowing: the first version reported the *representative*
+batch as MODERATE. That was sampling noise — `error_code[upi]` had a median PSI
+of 0.139 on batches with no drift at all, because 17 levels against ~135 UPI rows
+leaves 3–6 observations per bin. Rare levels are now merged, and a test pins the
+noise floor below the stable cutoff. See `docs/decisions.md`.
+
 ### What the fraud hard-block guarantees
 
 Two claims, deliberately kept separate:
@@ -335,6 +373,7 @@ construction.
 - [x] Dashboard
 - [x] Integration + demo scenario
 - [x] Deployment (config + verification; see docs/deployment.md)
+- [x] Drift monitoring (PSI, read-only)
 - [ ] Architecture doc + "what broke" writeup
 - [ ] Pitch video
 

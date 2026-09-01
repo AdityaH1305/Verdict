@@ -1,0 +1,20 @@
+{
+  "WARNING": "CONSTRUCTED FOR DEMONSTRATION. This drift was introduced deliberately by scripts/make_drift_demo.py. It was not observed in production or in real traffic.",
+  "how": "Held-out rows re-weighted during sampling; no feature values were invented. Only the population mix differs from training.",
+  "shift_recipe": {
+    "upi_weight": 6.0,
+    "fraud_weight": 3.0,
+    "high_amount_weight": 3.0,
+    "high_amount_threshold": 1500.0
+  },
+  "seed": 7,
+  "batch_size": 300,
+  "composition": {
+    "n": 300,
+    "upi_share": 0.75,
+    "fraud_share": 0.24,
+    "median_amount": 1252.19
+  },
+  "expected_verdict": "HIGH",
+  "expected_max_psi": 0.3933
+}
