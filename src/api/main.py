@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Revenue Recovery Agent",
+    title="Verdict",
     description="Diagnoses why a payment failed and decides the economically "
                 "correct recovery action.",
     version="0.1.0",

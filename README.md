@@ -1,4 +1,4 @@
-# Revenue Recovery Agent
+# Verdict
 
 An AI system that diagnoses *why* payment transactions fail and decides the
 economically correct recovery action — instead of treating "failure" as a

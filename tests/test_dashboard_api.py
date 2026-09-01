@@ -173,7 +173,7 @@ class TestDashboardRoutes:
     def test_root_serves_the_dashboard(self, client):
         r = client.get("/")
         assert r.status_code == 200
-        assert "Revenue Recovery Agent" in r.text
+        assert "Verdict" in r.text
         assert "Live decision feed" in r.text
 
     def test_retry_storm_report_is_served(self, client):
