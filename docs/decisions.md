@@ -873,10 +873,29 @@ enforced by a test, not just convention.
 
 | | Pinned (representative) | Shifted (constructed) |
 |---|---|---|
-| UPI share | 0.43 | 0.75 |
-| Fraud share | 0.11 | 0.24 |
-| Median amount | ₹674 | ₹1,252 |
-| Verdict | **LOW** (0.083) | **HIGH** (0.393) |
+| UPI share | 0.43 | 0.65 |
+| Fraud share | 0.11 | 0.21 |
+| Median amount | ₹674 | ₹868 |
+| Verdict | **LOW** (0.083) | **MODERATE** (0.172) |
+
+**Post-deploy correction (sqrt weight dampening):** the three sampling
+multipliers above stack — a row matching all three conditions got
+`6.0 × 3.0 × 3.0 = 54×` the weight of a row matching none. That 54:1 ratio
+made `pool.sample(..., replace=False, weights=...)` fail on Render's pandas
+build with `ValueError: Weighted sampling cannot be achieved with
+replace=False` — a numerical-stability limit of pandas' weighted-without-
+replacement sampler at this pool size (1,600) and draw count (300), not a
+logic bug, and version-dependent (it did not reproduce on every pandas
+build). Fixed by taking `sqrt()` of the combined weight before normalizing,
+which brings the ratio to ~7.3:1 and preserves every row's relative ranking
+(sqrt is monotonic) while sampling reliably.
+
+This softened the constructed shift's effect along with fixing the crash —
+the numbers above are the actual output of the dampened script, not the
+pre-fix figures, and the verdict moved from HIGH to MODERATE as a direct
+result. The `SHIFT` weights themselves were not touched to compensate;
+restoring a HIGH verdict, if wanted, is a separate decision about how strong
+the demo scenario should be.
 
 ### Read-only, asserted rather than claimed
 

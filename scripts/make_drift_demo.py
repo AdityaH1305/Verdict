@@ -67,6 +67,18 @@ def build_shifted_batch(pool: pd.DataFrame, seed: int = SEED) -> pd.DataFrame:
     w[(pool["failure_category"] == "fraud_block").values] *= SHIFT["fraud_weight"]
     w[(pool["amount"] >= SHIFT["high_amount_threshold"]).values] *= SHIFT["high_amount_weight"]
 
+    # The three multipliers stack: a row matching all three conditions gets
+    # 6.0 * 3.0 * 3.0 = 54x the weight of a row matching none, a 54:1 ratio.
+    # pandas' weighted-without-replacement sampler (`replace=False`) can fail
+    # to satisfy a ratio that extreme for this pool size (1,600) and draw count
+    # (300) -- it raised "Weighted sampling cannot be achieved with
+    # replace=False" on Render's pandas build, though not on every pandas
+    # version. sqrt-dampening the combined weight brings the ratio down to
+    # ~7.3:1 (still comfortably reproduces the intended shift -- see the
+    # regression test in tests/test_drift.py) while keeping every row's
+    # RELATIVE ranking identical, since sqrt is monotonic.
+    w = np.sqrt(w)
+
     return pool.sample(
         n=BATCH_SIZE, replace=False, weights=w / w.sum(), random_state=seed
     ).reset_index(drop=True)

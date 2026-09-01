@@ -173,158 +173,158 @@
     "constructed": true,
     "composition": {
       "n": 300,
-      "upi_share": 0.75,
-      "fraud_share": 0.24,
-      "median_amount": 1252.19
+      "upi_share": 0.6533,
+      "fraud_share": 0.2067,
+      "median_amount": 868.36
     },
     "drift": {
-      "overall_verdict": "HIGH",
-      "max_psi": 0.3933,
+      "overall_verdict": "MODERATE",
+      "max_psi": 0.172,
       "driver": "payment_method",
-      "driver_detail": "'payment_method' drifted (PSI 0.3933), driven by bin card: 25.0% of the batch vs 55.1% in training (less frequent).",
+      "driver_detail": "'payment_method' drifted (PSI 0.172), driven by bin card: 34.7% of the batch vs 55.1% in training (less frequent).",
       "n_rows": 300,
       "features": {
         "payment_method": {
-          "psi": 0.3933,
-          "verdict": "HIGH",
+          "psi": 0.172,
+          "verdict": "MODERATE",
           "n_rows": 300,
           "top_contributors": [
             {
               "bin": "card",
               "expected": 0.5514,
-              "actual": 0.25,
-              "contribution": 0.2384
+              "actual": 0.3467,
+              "contribution": 0.095
             },
             {
               "bin": "upi",
               "expected": 0.4486,
-              "actual": 0.75,
-              "contribution": 0.1549
+              "actual": 0.6533,
+              "contribution": 0.077
             }
           ]
         },
         "failure_category": {
-          "psi": 0.1189,
-          "verdict": "MODERATE",
+          "psi": 0.0751,
+          "verdict": "LOW",
           "n_rows": 300,
           "top_contributors": [
             {
               "bin": "fraud_block",
               "expected": 0.1277,
-              "actual": 0.24,
-              "contribution": 0.0709
+              "actual": 0.2067,
+              "contribution": 0.0381
             },
             {
               "bin": "hard_decline",
               "expected": 0.3341,
-              "actual": 0.2233,
-              "contribution": 0.0446
+              "actual": 0.2333,
+              "contribution": 0.0361
             },
             {
-              "bin": "soft_decline",
-              "expected": 0.2687,
-              "actual": 0.2467,
-              "contribution": 0.0019
+              "bin": "customer_dropoff",
+              "expected": 0.2695,
+              "actual": 0.2833,
+              "contribution": 0.0007
             }
           ]
         },
         "error_code[card]": {
-          "psi": 0.3891,
-          "verdict": "HIGH",
-          "n_rows": 75,
+          "psi": 0.0942,
+          "verdict": "LOW",
+          "n_rows": 104,
           "top_contributors": [
-            {
-              "bin": "91",
-              "expected": 0.1663,
-              "actual": 0.0533,
-              "contribution": 0.1285
-            },
             {
               "bin": "59",
               "expected": 0.0802,
-              "actual": 0.2,
-              "contribution": 0.1095
+              "actual": 0.1635,
+              "contribution": 0.0593
             },
             {
-              "bin": "96",
-              "expected": 0.0983,
-              "actual": 0.04,
-              "contribution": 0.0525
+              "bin": "61",
+              "expected": 0.0876,
+              "actual": 0.0577,
+              "contribution": 0.0125
+            },
+            {
+              "bin": "91",
+              "expected": 0.1663,
+              "actual": 0.125,
+              "contribution": 0.0118
             }
           ]
         },
         "error_code[upi]": {
-          "psi": 0.0404,
+          "psi": 0.0473,
           "verdict": "LOW",
-          "n_rows": 225,
+          "n_rows": 196,
           "top_contributors": [
+            {
+              "bin": "U67",
+              "expected": 0.0801,
+              "actual": 0.051,
+              "contribution": 0.0131
+            },
+            {
+              "bin": "U68",
+              "expected": 0.0575,
+              "actual": 0.0357,
+              "contribution": 0.0104
+            },
             {
               "bin": "UT",
               "expected": 0.0812,
-              "actual": 0.0489,
-              "contribution": 0.0164
-            },
-            {
-              "bin": "__other__",
-              "expected": 0.4103,
-              "actual": 0.4711,
-              "contribution": 0.0084
-            },
-            {
-              "bin": "ZM",
-              "expected": 0.0899,
-              "actual": 0.0667,
-              "contribution": 0.0069
+              "actual": 0.0561,
+              "contribution": 0.0092
             }
           ]
         },
         "amount": {
-          "psi": 0.2089,
-          "verdict": "MODERATE",
-          "n_rows": 300,
-          "top_contributors": [
-            {
-              "bin": ">2978",
-              "expected": 0.1,
-              "actual": 0.2067,
-              "contribution": 0.0774
-            },
-            {
-              "bin": "430.8-563.7",
-              "expected": 0.1,
-              "actual": 0.05,
-              "contribution": 0.0347
-            },
-            {
-              "bin": "1820-2978",
-              "expected": 0.1,
-              "actual": 0.1633,
-              "contribution": 0.0311
-            }
-          ]
-        },
-        "seconds_to_failure": {
-          "psi": 0.0393,
+          "psi": 0.0444,
           "verdict": "LOW",
           "n_rows": 300,
           "top_contributors": [
             {
+              "bin": "<199.2",
+              "expected": 0.1,
+              "actual": 0.0633,
+              "contribution": 0.0167
+            },
+            {
+              "bin": "1270-1820",
+              "expected": 0.1,
+              "actual": 0.1367,
+              "contribution": 0.0115
+            },
+            {
+              "bin": "430.8-563.7",
+              "expected": 0.1,
+              "actual": 0.07,
+              "contribution": 0.0107
+            }
+          ]
+        },
+        "seconds_to_failure": {
+          "psi": 0.0194,
+          "verdict": "LOW",
+          "n_rows": 300,
+          "top_contributors": [
+            {
+              "bin": "40.9-53.5",
+              "expected": 0.1006,
+              "actual": 0.13,
+              "contribution": 0.0075
+            },
+            {
               "bin": "1-2.3",
               "expected": 0.1014,
-              "actual": 0.0633,
-              "contribution": 0.0179
+              "actual": 0.0767,
+              "contribution": 0.0069
             },
             {
-              "bin": "30.8-40.9",
-              "expected": 0.0994,
-              "actual": 0.1367,
-              "contribution": 0.0119
-            },
-            {
-              "bin": "20.2-30.8",
+              "bin": ">75.21",
               "expected": 0.1,
-              "actual": 0.0833,
-              "contribution": 0.003
+              "actual": 0.0867,
+              "contribution": 0.0019
             }
           ]
         }

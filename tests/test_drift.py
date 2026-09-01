@@ -25,6 +25,8 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 
 from src.monitoring.baseline import (  # noqa: E402
     MIN_LEVEL_SHARE, build_baseline, load_baseline,
@@ -177,17 +179,30 @@ class TestDirectionalSanity:
 
     @requires_drift_demo
     def test_constructed_shift_is_detected(self, baseline):
+        """
+        Verdict must clear LOW, i.e. max_psi >= PSI_STABLE (the LOW/MODERATE
+        boundary) -- not necessarily >= PSI_MODERATE (the MODERATE/HIGH
+        boundary). The shift's sampling weights were sqrt-dampened to fix a
+        pandas sampling crash (see build_shifted_batch's docstring), which
+        softened the effect from HIGH (0.393) to MODERATE (0.172) as a direct,
+        re-measured consequence -- this must not silently start expecting HIGH.
+        """
         result = detect_drift(baseline, pd.read_csv(DRIFT_CSV))
         assert result["overall_verdict"] in ("MODERATE", "HIGH")
-        assert result["max_psi"] >= PSI_MODERATE
+        assert result["max_psi"] >= PSI_STABLE
 
     @requires_drift_demo
     @pytest.mark.skipif(not os.path.exists(DEMO_CSV), reason="no pinned batch")
     def test_shifted_batch_scores_far_above_the_representative_one(self, baseline):
-        """The separation is what makes the monitor useful, not the absolute number."""
+        """
+        The separation is what makes the monitor useful, not the absolute
+        number. Re-measured after sqrt dampening: pinned 0.083, shifted 0.172,
+        a ~2.1x gap -- the threshold below is set with headroom under that,
+        not at the old pre-dampening ratio (which was ~4.7x).
+        """
         low = detect_drift(baseline, pd.read_csv(DEMO_CSV))["max_psi"]
         high = detect_drift(baseline, pd.read_csv(DRIFT_CSV))["max_psi"]
-        assert high > 3 * low
+        assert high > 1.75 * low
 
     @requires_drift_demo
     def test_verdict_names_a_driver(self, baseline):
@@ -202,6 +217,78 @@ class TestDirectionalSanity:
 
         result = psi_for_feature(baseline["features"]["error_code[upi]"], batch)
         assert result["psi"] > PSI_MODERATE
+
+
+# --------------------------------------------------------------------------- #
+# The shifted-batch SAMPLER itself (not just its drift score)
+# --------------------------------------------------------------------------- #
+
+@requires_baseline
+class TestShiftedBatchSampling:
+    """
+    Regression on a real deploy failure, not a hypothetical one.
+
+    build_shifted_batch()'s three multipliers (upi/fraud/high-amount) stack
+    multiplicatively: a row matching all three got 6.0 * 3.0 * 3.0 = 54x the
+    weight of a row matching none. That 54:1 ratio made
+    `pool.sample(..., replace=False, weights=...)` raise "Weighted sampling
+    cannot be achieved with replace=False" on Render's pandas build -- a
+    numerical-stability limit of pandas' weighted-without-replacement sampler
+    at this pool size (1,600) and draw count (300), not a logic bug, and
+    version-dependent (it did not reproduce on every pandas build, including
+    the one in this dev environment).
+
+    Fixed by sqrt-dampening the combined weight before normalizing. This test
+    would have caught the crash before it reached Render, and guards against a
+    future change to SHIFT silently reintroducing an unsampleable ratio OR
+    silently producing a batch that isn't actually shifted.
+    """
+
+    def test_build_shifted_batch_does_not_raise(self):
+        from make_drift_demo import build_shifted_batch
+
+        pool = pd.read_csv(TEST_DATA)
+        # must not raise ValueError("Weighted sampling cannot be achieved
+        # with replace=False") -- the exact failure mode seen on Render
+        build_shifted_batch(pool)
+
+    def test_shifted_batch_is_meaningfully_more_upi_fraud_and_costly(self):
+        """
+        A floor on the fix, not just "doesn't crash": dampening the weights
+        must not dampen the shift down to noise. Each targeted share must
+        clear the FULL POOL's own composition by a real margin.
+
+        Compared against the full 1,600-row pool rather than a random 300-row
+        sample of it: a small sample is itself noisy enough (+/- several points
+        on these shares) to produce a flaky pass/fail on this exact assertion.
+        """
+        from make_drift_demo import _summarise, build_shifted_batch
+
+        pool = pd.read_csv(TEST_DATA)
+        pool_baseline = _summarise(pool)
+        shifted = _summarise(build_shifted_batch(pool))
+
+        assert shifted["upi_share"] > pool_baseline["upi_share"] + 0.15, (
+            "UPI share is not meaningfully higher than the pool's own share -- "
+            "sqrt dampening may have flattened the shift to noise"
+        )
+        assert shifted["fraud_share"] > pool_baseline["fraud_share"] + 0.05, (
+            "fraud share is not meaningfully higher than the pool's own share"
+        )
+        assert shifted["median_amount"] > pool_baseline["median_amount"] * 1.1, (
+            "median amount is not meaningfully higher than the pool's own median"
+        )
+
+    def test_shifted_batch_still_registers_as_drift(self, baseline):
+        """
+        The end-to-end version of the check above: after dampening, the batch
+        must still be distinguishable from training, not just "sampled fine".
+        """
+        from make_drift_demo import build_shifted_batch
+
+        pool = pd.read_csv(TEST_DATA)
+        result = detect_drift(baseline, build_shifted_batch(pool))
+        assert result["overall_verdict"] in ("MODERATE", "HIGH")
 
 
 # --------------------------------------------------------------------------- #

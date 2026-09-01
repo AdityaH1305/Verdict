@@ -312,9 +312,9 @@ behind stable ones.
 
 | | Pinned batch | Constructed shift |
 |---|---|---|
-| UPI share | 0.43 | 0.75 |
-| Fraud share | 0.11 | 0.24 |
-| Verdict | **LOW** (0.083) | **HIGH** (0.393) |
+| UPI share | 0.43 | 0.65 |
+| Fraud share | 0.11 | 0.21 |
+| Verdict | **LOW** (0.083) | **MODERATE** (0.172) |
 
 The shifted batch in the dashboard's batch selector is **constructed on purpose**
 (`scripts/make_drift_demo.py`) by re-weighting which held-out rows get sampled.

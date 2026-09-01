@@ -11,10 +11,10 @@
   "batch_size": 300,
   "composition": {
     "n": 300,
-    "upi_share": 0.75,
-    "fraud_share": 0.24,
-    "median_amount": 1252.19
+    "upi_share": 0.6533,
+    "fraud_share": 0.2067,
+    "median_amount": 868.36
   },
-  "expected_verdict": "HIGH",
-  "expected_max_psi": 0.3933
+  "expected_verdict": "MODERATE",
+  "expected_max_psi": 0.172
 }
