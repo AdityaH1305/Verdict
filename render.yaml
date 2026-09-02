@@ -22,7 +22,17 @@
 
 services:
   - type: web
-    name: revenue-recovery-agent
+    # MUST match the live service's name exactly. Render Blueprints match
+    # services BY THIS FIELD -- a mismatch doesn't error, it just means the
+    # Blueprint no longer manages the service. When the service was renamed
+    # to "verdict" without updating this to match, syncs stopped applying
+    # buildCommand (among everything else here), and the service silently
+    # fell back to Render's default Python build: `pip install -r
+    # requirements.txt` and nothing else. No model artifacts were ever
+    # produced, and `/health` returning 200 with `"status": "degraded"`
+    # meant Render's health check passed on the broken deploy -- it never
+    # looked like a failed deploy from the platform's side.
+    name: verdict
     runtime: python
     plan: free
     region: singapore          # closest to the judging audience
