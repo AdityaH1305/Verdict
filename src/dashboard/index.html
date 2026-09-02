@@ -9,644 +9,1655 @@
 
   Served by FastAPI itself (GET /), so it runs same-origin with the API -- no
   CORS, no proxy config, no second dev server. It also works with no internet,
-  which matters for a live demo.
+  which matters for a live demo. tests/test_dashboard_api.py asserts that no
+  external reference ever creeps in, which is also why the type stack is built
+  from system faces rather than a web font.
 
   Everything here is presentation. All numbers come from the backend endpoints;
-  this file computes no decisions of its own.
+  this file computes no decisions of its own. Where it sums or divides, it is
+  summing fields the backend already returned for the same batch.
+
+  Design: "Settlement" -- a ledger sheet, not a card wall. One elevated surface
+  (the settlement summary); everything below is flat, separated by hairlines.
+  Merchant language leads; the model layer sits behind explicit disclosures.
 -->
 <style>
-  :root {
-    --bg: #0f1216;
-    --panel: #171b21;
-    --panel-2: #1d222a;
-    --line: #2a313b;
-    --text: #e6e9ee;
-    --muted: #8d97a5;
-    --accent: #48b3a0;
+/* ---------------------------------------------------------------- tokens --- */
+/* Light is the base palette. Dark is a pure token swap, declared twice so that
+   both the un-stamped system-dark case and an explicit toggle resolve. No
+   colour is ever declared only inside a media or [data-theme] block. */
+:root {
+  color-scheme: light;
 
-    --hard: #e07a5f;
-    --soft: #6fa8dc;
-    --drop: #e9c46a;
-    --fraud: #b56576;
+  --paper:        #F5F6F9;
+  --sheet:        #FFFFFF;
+  --sunk:         #F0F2F6;
+  --rule:         #DBDFE7;
+  --rule-strong:  #C3C9D4;
 
-    --card-c: #6c8ee3;
-    --upi-c: #48b3a0;
+  --ink:          #121722;
+  --ink-mid:      #596373;
+  --ink-soft:     #8A93A2;
 
-    --auto: #2a9d8f;
-    --later: #8ab17d;
-    --nudge: #e9c46a;
-    --esc: #f4a261;
-    --none: #6b7480;
+  --indigo:       #2B3F8C;
+  --indigo-ink:   #FFFFFF;
+  --indigo-soft:  rgba(43,63,140,.09);
+  --indigo-line:  rgba(43,63,140,.26);
 
-    --before: #e63946;
-    --after: #2a9d8f;
+  --recovered:      #0F7A5A;
+  --recovered-soft: rgba(15,122,90,.10);
+  --watch:          #A96400;
+  --watch-soft:     rgba(169,100,0,.10);
+  --watch-line:     rgba(169,100,0,.30);
+  --lost:           #AE2F39;
+  --lost-soft:      rgba(174,47,57,.09);
+  --fraud:          #6B3E86;
+  --fraud-soft:     rgba(107,62,134,.08);
+
+  --rail-card:    #3A5BC7;
+  --rail-upi:     #0E7C86;
+
+  --act-1: #22346F;
+  --act-2: #3D53A0;
+  --act-3: #6E7EC6;
+  --act-4: #A96400;
+  --act-5: #8A93A2;
+
+  --lift: 0 1px 2px rgba(18,23,34,.05), 0 10px 30px -12px rgba(18,23,34,.20);
+
+  --figure: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display",
+            "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --text:   -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text",
+            "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --voice:  Georgia, "Iowan Old Style", "Palatino Linotype", Palatino,
+            "Times New Roman", serif;
+  --code:   "Cascadia Mono", Consolas, "SF Mono", ui-monospace, Menlo,
+            "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper:#0E1116; --sheet:#161A22; --sunk:#11151C;
+    --rule:#252B36; --rule-strong:#39414F;
+    --ink:#E7EAF0; --ink-mid:#97A0AF; --ink-soft:#6C7585;
+    --indigo:#93A6EA; --indigo-ink:#0E1116;
+    --indigo-soft:rgba(147,166,234,.13); --indigo-line:rgba(147,166,234,.30);
+    --recovered:#3FC79B; --recovered-soft:rgba(63,199,155,.13);
+    --watch:#E3A44B; --watch-soft:rgba(227,164,75,.13); --watch-line:rgba(227,164,75,.32);
+    --lost:#F0757E; --lost-soft:rgba(240,117,126,.13);
+    --fraud:#B78FD4; --fraud-soft:rgba(183,143,212,.12);
+    --rail-card:#7B92E8; --rail-upi:#3FB6C0;
+    --act-1:#A3B4F0; --act-2:#8093DC; --act-3:#6373AC; --act-4:#E3A44B; --act-5:#6C7585;
+    --lift: 0 1px 2px rgba(0,0,0,.40), 0 10px 30px -12px rgba(0,0,0,.60);
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 80px; }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper:#0E1116; --sheet:#161A22; --sunk:#11151C;
+  --rule:#252B36; --rule-strong:#39414F;
+  --ink:#E7EAF0; --ink-mid:#97A0AF; --ink-soft:#6C7585;
+  --indigo:#93A6EA; --indigo-ink:#0E1116;
+  --indigo-soft:rgba(147,166,234,.13); --indigo-line:rgba(147,166,234,.30);
+  --recovered:#3FC79B; --recovered-soft:rgba(63,199,155,.13);
+  --watch:#E3A44B; --watch-soft:rgba(227,164,75,.13); --watch-line:rgba(227,164,75,.32);
+  --lost:#F0757E; --lost-soft:rgba(240,117,126,.13);
+  --fraud:#B78FD4; --fraud-soft:rgba(183,143,212,.12);
+  --rail-card:#7B92E8; --rail-upi:#3FB6C0;
+  --act-1:#A3B4F0; --act-2:#8093DC; --act-3:#6373AC; --act-4:#E3A44B; --act-5:#6C7585;
+  --lift: 0 1px 2px rgba(0,0,0,.40), 0 10px 30px -12px rgba(0,0,0,.60);
+}
 
-  header { display: flex; justify-content: space-between; align-items: flex-start;
-           gap: 20px; flex-wrap: wrap; margin-bottom: 22px; }
-  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.01em; }
-  .sub { color: var(--muted); font-size: 13px; max-width: 62ch; }
+/* ------------------------------------------------------------------ base --- */
+* { box-sizing: border-box; }
 
-  .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  select, button {
-    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
-    border-radius: 7px; padding: 7px 11px; font: inherit; font-size: 13px; cursor: pointer;
-  }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #06231e; font-weight: 600; }
-  button:disabled { opacity: .5; cursor: default; }
-  button:hover:not(:disabled) { filter: brightness(1.12); }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 14.5px/1.6 var(--text);
+  -webkit-font-smoothing: antialiased;
+}
 
-  section { background: var(--panel); border: 1px solid var(--line);
-            border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
-       color: var(--muted); margin: 0 0 4px; font-weight: 600; }
-  .note { color: var(--muted); font-size: 12.5px; margin: 0 0 16px; max-width: 78ch; }
+h1, h2, h3, h4 { text-wrap: balance; margin: 0; }
 
-  /* headline */
-  .headline { display: flex; gap: 34px; align-items: flex-end; flex-wrap: wrap; }
-  .big { font-size: 46px; font-weight: 700; letter-spacing: -0.02em; color: var(--accent);
-         line-height: 1; font-variant-numeric: tabular-nums; }
-  .big-label { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
-  .stats { display: flex; gap: 26px; flex-wrap: wrap; }
-  .stat .v { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .stat .k { color: var(--muted); font-size: 12px; }
+a { color: var(--indigo); }
 
-  /* bars */
-  .row { display: grid; grid-template-columns: 148px 1fr 116px; gap: 12px;
-         align-items: center; margin-bottom: 9px; }
-  .row .lbl { font-size: 13px; }
-  .track { background: var(--panel-2); border-radius: 5px; height: 24px;
-           overflow: hidden; display: flex; }
-  .track > span { height: 100%; display: block; transition: width .35s ease; }
-  .amt { text-align: right; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); }
+:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
 
-  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px;
-            font-size: 12px; color: var(--muted); }
-  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px;
-              margin-right: 6px; vertical-align: middle; }
+.sheetwrap { max-width: 1120px; margin: 0 auto; padding: 0 24px 96px; }
 
-  /* retry storm */
-  .storm { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 18px; }
-  .metric { background: var(--panel-2); border: 1px solid var(--line);
-            border-radius: 9px; padding: 13px 15px; }
-  .metric .t { font-size: 12px; color: var(--muted); margin-bottom: 9px; }
-  .pair { display: flex; align-items: baseline; gap: 9px; font-variant-numeric: tabular-nums; }
-  .pair .b { color: var(--before); font-size: 20px; font-weight: 700; }
-  .pair .a { color: var(--after); font-size: 20px; font-weight: 700; }
-  .pair .arw { color: var(--muted); }
-  .minibars { margin-top: 9px; }
-  .minibar { height: 7px; border-radius: 4px; margin-bottom: 4px; }
+/* Numerals line up everywhere they are read in a column. */
+.fig { font-family: var(--figure); font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--code); font-size: .86em; letter-spacing: -.01em; }
+.voice {
+  font-family: var(--voice);
+  font-size: 16px; line-height: 1.62; color: var(--ink-mid);
+  max-width: 62ch; margin: 0;
+}
+.voice strong { color: var(--ink); font-weight: 600; }
 
-  .verdict { margin-top: 16px; padding: 12px 14px; border-radius: 9px;
-             background: rgba(42,157,143,.09); border: 1px solid rgba(42,157,143,.28);
-             font-size: 13px; }
-  .caveat { margin-top: 9px; color: var(--muted); font-size: 12.5px; }
+/* Band = a ruled section of the statement. Flat on paper, hairline above.
+   Deliberately NOT a card: no radius, no shadow, no fill. */
+.band { border-top: 1px solid var(--rule); padding: 40px 0 6px; }
+.band-head { display: flex; align-items: baseline; justify-content: space-between;
+             gap: 20px; flex-wrap: wrap; margin-bottom: 6px; }
+.band-head h2 { font-size: 19px; font-weight: 600; letter-spacing: -.012em; }
+.band-note { color: var(--ink-soft); font-size: 12.5px; }
+.band > .voice { margin: 12px 0 26px; }
 
-  /* feed */
-  table { width: 100%; border-collapse: collapse; }
-  thead th { text-align: left; font-size: 11px; text-transform: uppercase;
-             letter-spacing: .06em; color: var(--muted); font-weight: 600;
-             padding: 8px 10px; border-bottom: 1px solid var(--line); }
-  tbody td { padding: 9px 10px; border-bottom: 1px solid rgba(42,49,59,.5); font-size: 13px; }
-  tbody tr.head { cursor: pointer; }
-  tbody tr.head:hover { background: var(--panel-2); }
-  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* -------------------------------------------------------------- masthead --- */
+.masthead {
+  border-bottom: 1px solid var(--rule);
+  background: var(--sheet);
+}
+.masthead-in {
+  max-width: 1120px; margin: 0 auto; padding: 16px 24px;
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+}
+.brand { display: flex; align-items: baseline; gap: 12px; margin-right: auto; }
+.brand .name {
+  font-family: var(--figure); font-size: 20px; font-weight: 700;
+  letter-spacing: -.02em;
+}
+.brand .tag { color: var(--ink-soft); font-size: 13px; }
 
-  .badge { display: inline-block; padding: 2px 9px; border-radius: 20px;
-           font-size: 11.5px; font-weight: 600; white-space: nowrap; }
-  .chip { display: inline-block; padding: 1px 8px; border-radius: 4px;
-          font-size: 11.5px; background: var(--panel-2); border: 1px solid var(--line); }
+.controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-  .why { background: var(--panel-2); }
-  .why-inner { padding: 14px 16px 16px; }
-  .why h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase;
-            letter-spacing: .07em; color: var(--muted); font-weight: 600; }
-  .why p { margin: 0 0 14px; max-width: 88ch; }
-  .why .grounded { color: var(--muted); font-size: 12.5px; }
-  .probs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-  .prob { background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
-          padding: 5px 9px; font-size: 12px; }
-  .prob b { font-variant-numeric: tabular-nums; }
+select, .btn {
+  font: inherit; font-size: 13px;
+  background: var(--sheet); color: var(--ink);
+  border: 1px solid var(--rule-strong); border-radius: 6px;
+  padding: 7px 11px; cursor: pointer;
+}
+select:hover:not(:disabled), .btn:hover:not(:disabled) { border-color: var(--indigo); }
+.btn.primary {
+  background: var(--indigo); border-color: var(--indigo); color: var(--indigo-ink);
+  font-weight: 600;
+}
+.btn.primary:hover:not(:disabled) { filter: brightness(1.1); }
+.btn:disabled, select:disabled { opacity: .45; cursor: default; }
+.btn.ghost { border-color: var(--rule-strong); background: transparent; }
 
-  .iv { margin-top: 3px; }
-  .iv-track { position: relative; height: 4px; border-radius: 3px;
-              background: var(--bg); border: 1px solid var(--line); width: 78px;
-              margin-left: auto; }
-  .iv-span { position: absolute; top: 0; height: 100%; border-radius: 3px; }
-  .iv-tick { position: absolute; top: -2px; width: 1px; height: 8px;
-             background: var(--muted); opacity: .8; }
-  .iv-num { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums;
-            margin-top: 2px; }
-  .adj { margin: 0 0 14px; padding: 9px 11px; border-radius: 7px;
-         background: rgba(244,162,97,.10); border: 1px solid rgba(244,162,97,.32);
-         font-size: 12.5px; }
+/* Provenance line: labelled, on its own row. Never a dot-joined meta string. */
+.provenance {
+  max-width: 1120px; margin: 0 auto; padding: 14px 24px 0;
+  display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap;
+  font-size: 12.5px; color: var(--ink-soft);
+}
+.provenance .count { color: var(--ink); font-weight: 600; font-family: var(--figure);
+                     font-variant-numeric: tabular-nums; }
+.stamp {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--rule); border-radius: 5px;
+  padding: 3px 9px; font-size: 12px; color: var(--ink-mid); background: var(--sheet);
+}
+.stamp::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ink-soft); flex: none;
+}
+.stamp.pinned::before   { background: var(--indigo); }
+.stamp.fresh::before    { background: var(--recovered); }
+.stamp.built::before    { background: var(--watch); }
+.stamp.built { color: var(--watch); border-color: var(--watch-line); background: var(--watch-soft); }
+.stamp.bad { color: var(--lost); border-color: var(--lost); background: var(--lost-soft); }
 
-  /* Drift badge -- intentionally minimal; a UI rebuild is planned. */
-  .drift { display: inline-flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
-           padding: 7px 11px; border-radius: 8px; font-size: 12.5px;
-           border: 1px solid var(--line); background: var(--panel-2); margin-top: 14px; }
-  .drift b { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
-  .drift .LOW { color: var(--auto); }
-  .drift .MODERATE { color: var(--nudge); }
-  .drift .HIGH { color: var(--before); }
-  .drift .msg { color: var(--muted); }
-  .drift .warn { color: var(--esc); }
+/* ------------------------------------------------------ settlement sheet --- */
+/* The one elevated surface on the page. */
+.settlement {
+  background: var(--sheet); border: 1px solid var(--rule);
+  border-radius: 10px; box-shadow: var(--lift);
+  padding: 34px 34px 28px; margin-top: 18px;
+}
+.verdict-figures {
+  display: grid; gap: 28px 44px;
+  grid-template-columns: minmax(200px, auto) repeat(auto-fit, minmax(110px, max-content));
+  align-items: end;
+}
+.verdict-figures > * { min-width: 0; }
+.hero-fig {
+  font-family: var(--figure); font-variant-numeric: tabular-nums;
+  font-size: 56px; line-height: 1; font-weight: 700; letter-spacing: -.025em;
+  color: var(--recovered);
+}
+.hero-label { color: var(--ink-mid); font-size: 13.5px; margin-top: 10px; }
+.sub-fig .v {
+  font-family: var(--figure); font-variant-numeric: tabular-nums;
+  font-size: 22px; font-weight: 600; letter-spacing: -.015em; line-height: 1.1;
+}
+.sub-fig .k { color: var(--ink-soft); font-size: 12.5px; margin-top: 5px; }
 
-  .live-out { margin-top: 10px; padding: 11px 13px; border-radius: 8px;
-              background: rgba(108,142,227,.09); border: 1px solid rgba(108,142,227,.3); }
-  .muted { color: var(--muted); }
-  .err { color: #e07a5f; }
-  .empty { color: var(--muted); padding: 26px 4px; text-align: center; }
-  .fraudrow td { background: rgba(181,101,118,.07); }
+.settlement .voice { margin: 26px 0 0; padding-top: 22px; border-top: 1px solid var(--rule); }
+
+/* Where the failed money went. One bar, three shares, labelled underneath. */
+.moneybar { margin-top: 22px; }
+.moneybar .track {
+  display: flex; height: 30px; border-radius: 5px; overflow: hidden;
+  background: var(--sunk); border: 1px solid var(--rule);
+}
+.moneybar .track > span { display: block; height: 100%; transition: width .4s ease; }
+.moneybar .keys {
+  display: flex; gap: 8px 26px; flex-wrap: wrap; margin-top: 12px;
+  font-size: 12.5px; color: var(--ink-mid);
+}
+.moneybar .key { display: flex; align-items: baseline; gap: 8px; }
+.moneybar .key i {
+  width: 9px; height: 9px; border-radius: 2px; flex: none;
+  transform: translateY(-1px);
+}
+.moneybar .key b {
+  font-family: var(--figure); font-variant-numeric: tabular-nums;
+  font-weight: 600; color: var(--ink);
+}
+
+/* ------------------------------------------------------------ disclosure --- */
+/* One device, used everywhere the technical layer is available on demand. */
+.disc {
+  font: inherit; font-size: 13px; font-weight: 500;
+  background: none; border: 0; padding: 8px 0; margin-top: 18px;
+  color: var(--indigo); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+  border-bottom: 1px solid var(--indigo-line);
+}
+.disc:hover { border-bottom-color: var(--indigo); }
+.disc .caret {
+  width: 0; height: 0; flex: none;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+  transition: transform .2s ease;
+}
+.disc[aria-expanded="true"] .caret { transform: rotate(-180deg); }
+.disc-panel {
+  margin-top: 14px; padding: 20px 22px;
+  background: var(--sunk); border: 1px solid var(--rule); border-radius: 8px;
+}
+.disc-panel > :first-child { margin-top: 0; }
+.disc-panel h4 {
+  font-size: 12.5px; font-weight: 600; color: var(--ink);
+  margin: 20px 0 8px;
+}
+.disc-panel p { color: var(--ink-mid); font-size: 13px; margin: 0 0 10px; max-width: 72ch; }
+.disc-panel p:last-child { margin-bottom: 0; }
+
+/* Key/value rows inside a disclosure: a small ledger of its own. */
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 0; }
+.kv div {
+  padding: 8px 0; border-bottom: 1px solid var(--rule);
+  font-size: 13px; color: var(--ink-mid);
+}
+.kv div:nth-child(even) {
+  text-align: right; color: var(--ink); font-weight: 600;
+  font-family: var(--figure); font-variant-numeric: tabular-nums;
+}
+.kv div:nth-last-child(-n+2) { border-bottom: 0; }
+.kv .said { font-weight: 400; color: var(--ink-mid); font-family: var(--text); }
+
+/* ------------------------------------------------------- what needs you --- */
+/* Ruled cells sharing edges, not three floating cards. */
+.attention {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  border: 1px solid var(--rule); border-radius: 8px; overflow: hidden;
+  background: var(--sheet);
+}
+.att {
+  padding: 20px 22px 22px; border-right: 1px solid var(--rule);
+  border-top: 3px solid var(--ink-soft);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.attention .att:last-child { border-right: 0; }
+.att.needs  { border-top-color: var(--watch); }
+.att.shift  { border-top-color: var(--indigo); }
+.att.calm   { border-top-color: var(--ink-soft); }
+.att.fraud  { border-top-color: var(--fraud); }
+.att .lede {
+  font-family: var(--figure); font-size: 19px; font-weight: 600;
+  letter-spacing: -.015em; line-height: 1.25;
+}
+.att .lede b { font-variant-numeric: tabular-nums; }
+.att.needs .lede b { color: var(--watch); }
+.att.fraud .lede b { color: var(--fraud); }
+.att .body { color: var(--ink-mid); font-size: 13px; flex: 1 1 auto; }
+.att .body b { color: var(--ink); font-weight: 600;
+               font-family: var(--figure); font-variant-numeric: tabular-nums; }
+.att .disc { margin-top: 6px; align-self: flex-start; }
+.att .linkbtn {
+  font: inherit; font-size: 13px; font-weight: 500; background: none; border: 0;
+  padding: 8px 0; margin-top: 6px; align-self: flex-start; cursor: pointer;
+  color: var(--indigo); border-bottom: 1px solid var(--indigo-line);
+}
+.att .linkbtn:hover { border-bottom-color: var(--indigo); }
+
+/* ------------------------------------------------------------ bar rows ----- */
+/* Used by both the failure-reason band and the action band. */
+.bars { display: flex; flex-direction: column; }
+.barrow {
+  display: grid; grid-template-columns: minmax(190px, 250px) 1fr minmax(150px, auto);
+  gap: 8px 20px; align-items: center;
+  padding: 13px 0; border-bottom: 1px solid var(--rule);
+}
+.bars .barrow:last-child { border-bottom: 0; }
+.barrow .name { display: block; font-size: 14.5px; font-weight: 600;
+                letter-spacing: -.008em; }
+.barrow .gloss { display: block; font-size: 12.5px; color: var(--ink-soft);
+                 margin-top: 3px; max-width: 34ch; }
+.barrow .track {
+  display: flex; height: 22px; border-radius: 4px; overflow: hidden;
+  background: var(--sunk);
+}
+.barrow .track > span { display: block; height: 100%; transition: width .4s ease; }
+.barrow .tally {
+  text-align: right; font-family: var(--figure); font-variant-numeric: tabular-nums;
+  font-size: 13px; color: var(--ink-mid);
+}
+.barrow .tally b { color: var(--ink); font-size: 15px; font-weight: 600; }
+.barrow .split { display: block; font-size: 12px; margin-top: 2px; }
+.barrow .split .c { color: var(--rail-card); }
+.barrow .split .u { color: var(--rail-upi); }
+
+.railkey { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 16px;
+           font-size: 12.5px; color: var(--ink-mid); }
+.railkey span { display: inline-flex; align-items: center; gap: 7px; }
+.railkey i { width: 10px; height: 10px; border-radius: 2px; }
+
+/* ------------------------------------------------------------ the storm --- */
+.storm {
+  border: 1px solid var(--rule); border-radius: 8px; overflow: hidden;
+  background: var(--sheet);
+}
+.storm-head, .storm-row {
+  display: grid; grid-template-columns: minmax(170px, 1.3fr) 1fr 1fr minmax(90px, .7fr);
+  gap: 16px; align-items: center;
+  padding: 12px 20px; border-bottom: 1px solid var(--rule);
+}
+.storm-row:last-child { border-bottom: 0; }
+.storm-head {
+  background: var(--sunk); font-size: 12.5px; font-weight: 600; color: var(--ink-mid);
+}
+.storm-head .b { color: var(--lost); }
+.storm-head .a { color: var(--recovered); }
+.storm-row .what { font-size: 13.5px; }
+.storm-row .what small { display: block; color: var(--ink-soft); font-size: 12px; }
+.storm-row .v {
+  font-family: var(--figure); font-variant-numeric: tabular-nums;
+  font-size: 18px; font-weight: 600; letter-spacing: -.015em;
+}
+.storm-row .v.b { color: var(--lost); }
+.storm-row .v.a { color: var(--recovered); }
+.storm-row .v small { display: block; font-size: 11.5px; font-weight: 400; color: var(--ink-soft);
+                      font-family: var(--text); letter-spacing: 0; margin-top: 2px; }
+.storm-row .delta {
+  text-align: right; font-family: var(--figure); font-variant-numeric: tabular-nums;
+  font-size: 13px; font-weight: 600; color: var(--ink-mid);
+}
+.storm-row .delta.good { color: var(--recovered); }
+.storm-row .bar { height: 5px; border-radius: 3px; margin-top: 6px; transition: width .4s ease; }
+
+.cost {
+  margin-top: 18px; padding: 16px 20px;
+  border: 1px solid var(--rule); border-left: 3px solid var(--watch);
+  border-radius: 0 8px 8px 0; background: var(--watch-soft);
+  font-size: 13.5px; color: var(--ink-mid); max-width: 74ch;
+}
+.cost b { color: var(--ink); font-weight: 600; }
+.cost .h { display: block; color: var(--ink); font-weight: 600; margin-bottom: 5px;
+           font-size: 13px; }
+
+/* ------------------------------------------------------------- the ledger --- */
+.ledger-tools {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 18px 0 14px;
+}
+.ledger-count { font-size: 12.5px; color: var(--ink-soft); }
+.ledger-count b { color: var(--ink); font-family: var(--figure);
+                  font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.ledger-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px;
+                 background: var(--sheet); }
+table.ledger { width: 100%; border-collapse: collapse; min-width: 820px; }
+table.ledger thead th {
+  text-align: left; font-size: 12px; font-weight: 600; color: var(--ink-mid);
+  padding: 11px 16px; background: var(--sunk);
+  border-bottom: 1px solid var(--rule); white-space: nowrap;
+}
+table.ledger th.num, table.ledger td.num { text-align: right; }
+table.ledger tbody td {
+  padding: 11px 16px; border-bottom: 1px solid var(--rule); font-size: 13.5px;
+  vertical-align: top;
+}
+table.ledger tbody tr.entry { cursor: pointer; }
+table.ledger tbody tr.entry:hover td { background: var(--sunk); }
+table.ledger tbody tr.entry.open td { background: var(--sunk); }
+tr.entry.blocked td { background: var(--fraud-soft); }
+tr.entry.blocked:hover td { background: var(--fraud-soft); filter: brightness(.99); }
+td.amount { font-family: var(--figure); font-variant-numeric: tabular-nums;
+            font-weight: 600; white-space: nowrap; }
+
+.reason { display: block; font-weight: 500; }
+.reason-conf { display: block; font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px;
+       margin-right: 7px; transform: translateY(-1px); }
+
+.outcome {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+  color: var(--indigo-ink);
+}
+.outcome.flat { background: transparent; color: var(--ink-soft);
+                border: 1px solid var(--rule-strong); font-weight: 500; }
+.hedged { display: block; font-size: 11.5px; color: var(--watch); margin-top: 5px; }
+
+.odds { font-family: var(--figure); font-variant-numeric: tabular-nums;
+        font-weight: 600; font-size: 14px; }
+.notscored { color: var(--ink-soft); font-weight: 400; font-size: 12.5px; }
+/* Certainty is drawn: the span sits on 0..1 with a tick at the cutoff this
+   row's outcome actually turned on. */
+.iv { margin-top: 5px; margin-left: auto; width: 92px; }
+.iv-track { position: relative; height: 5px; border-radius: 3px;
+            background: var(--sunk); border: 1px solid var(--rule); }
+.iv-span { position: absolute; top: 0; height: 100%; border-radius: 3px;
+           background: var(--ink-soft); }
+.iv-span.wide { background: var(--watch); }
+.iv-tick { position: absolute; top: -3px; width: 1px; height: 11px;
+           background: var(--ink-mid); }
+.iv-num { font-size: 10.5px; color: var(--ink-soft); margin-top: 3px;
+          font-family: var(--figure); font-variant-numeric: tabular-nums; }
+
+/* Expanded entry */
+tr.why > td { padding: 0 !important; background: var(--sunk); }
+.why-in { padding: 22px 26px 26px; display: grid; gap: 20px;
+          grid-template-columns: minmax(0, 1fr); max-width: 92ch; }
+.why-in h4 { font-size: 12.5px; font-weight: 600; color: var(--ink); margin: 0 0 7px; }
+.why-in p { margin: 0; color: var(--ink-mid); font-size: 13.5px; }
+.why-in .code-fact { color: var(--ink-mid); font-size: 13px; }
+.why-in .code-fact .mono { color: var(--ink); font-weight: 600; }
+
+.hedge-note {
+  padding: 14px 16px; border-radius: 0 8px 8px 0;
+  border: 1px solid var(--rule); border-left: 3px solid var(--watch);
+  background: var(--watch-soft); font-size: 13px; color: var(--ink-mid);
+}
+.hedge-note b { display: block; color: var(--ink); font-weight: 600; margin-bottom: 4px; }
+
+/* Confidence vector: ruled mini-bars, never a row of dot-joined chips. */
+.confbars { display: flex; flex-direction: column; gap: 7px; max-width: 380px; }
+.confbar { display: grid; grid-template-columns: 150px 1fr 46px; gap: 12px;
+           align-items: center; font-size: 12.5px; color: var(--ink-mid); }
+.confbar .t { height: 6px; border-radius: 3px; background: var(--sunk); overflow: hidden; }
+.confbar .t span { display: block; height: 100%; }
+.confbar .p { text-align: right; font-family: var(--figure);
+              font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
+
+.live-out {
+  margin-top: 12px; padding: 14px 16px; border-radius: 8px;
+  background: var(--indigo-soft); border: 1px solid var(--indigo-line);
+  font-size: 13.5px; color: var(--ink);
+}
+.live-tag { font-size: 11.5px; color: var(--ink-soft); margin-bottom: 6px; }
+.hint { color: var(--ink-soft); font-size: 12px; }
+.empty { color: var(--ink-soft); padding: 40px 16px; text-align: center; }
+.bad { color: var(--lost); }
+
+/* ---------------------------------------------------------- data tables --- */
+table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.data th {
+  text-align: left; font-weight: 600; color: var(--ink-mid);
+  padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule-strong);
+}
+table.data td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule);
+                color: var(--ink-mid); }
+table.data td.n { font-family: var(--figure); font-variant-numeric: tabular-nums;
+                  color: var(--ink); font-weight: 600; text-align: right;
+                  padding-right: 14px; }
+table.data .read { font-weight: 600; }
+table.data .read.LOW { color: var(--ink-soft); }
+table.data .read.MODERATE { color: var(--watch); }
+table.data .read.HIGH { color: var(--lost); }
+.scale-note { color: var(--ink-soft); font-size: 12px; margin-top: 12px; max-width: 70ch; }
+
+/* --------------------------------------------------------------- footer --- */
+.colophon { display: grid; gap: 26px 34px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.colophon h3 { font-size: 13.5px; font-weight: 600; margin: 0 0 8px; }
+.colophon p { color: var(--ink-mid); font-size: 13px; margin: 0 0 10px; }
+.flow {
+  font-family: var(--code); font-size: 11.5px; color: var(--ink-mid);
+  background: var(--sunk); border: 1px solid var(--rule); border-radius: 8px;
+  padding: 16px; white-space: pre; overflow-x: auto; line-height: 1.7;
+}
+
+@media (max-width: 720px) {
+  .settlement { padding: 24px 20px 22px; }
+  .hero-fig { font-size: 38px; }
+  /* The auto-fit track floors were wider than a phone, which pushed the whole
+     page sideways. Two even columns instead. */
+  .verdict-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 16px; }
+  .masthead-in, .provenance, .sheetwrap { padding-left: 16px; padding-right: 16px; }
+  .sub-fig .v { font-size: 19px; }
+  .barrow { grid-template-columns: 1fr; }
+  .barrow .tally { text-align: left; }
+  .storm-head, .storm-row { grid-template-columns: 1fr 1fr; }
+  .storm-head .what, .storm-row .what { grid-column: 1 / -1; }
+  .storm-row .delta { grid-column: 1 / -1; text-align: left; }
+  .confbar { grid-template-columns: 120px 1fr 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <header>
-    <div>
-      <h1>Verdict</h1>
-      <div class="sub">Diagnoses <em>why</em> a payment failed, then decides the
-        economically correct recovery action. Every decision is auditable.</div>
+<header class="masthead">
+  <div class="masthead-in">
+    <div class="brand">
+      <span class="name">Verdict</span>
+      <span class="tag">Failed payments, diagnosed and recovered</span>
     </div>
     <div class="controls">
-      <label class="sub" for="batch">Batch</label>
+      <label class="band-note" for="batch">Looking at</label>
       <select id="batch">
-        <option value="demo" selected>Demo batch (pinned)</option>
-        <option value="drift">Drift demo (constructed shift)</option>
-        <option value="100">100 random</option>
-        <option value="300">300 random</option>
-        <option value="500">500 random</option>
-        <option value="1000">1000 random</option>
+        <option value="demo" selected>Today's batch</option>
+        <option value="drift">A day when patterns shifted</option>
+        <option value="100">Sample 100 payments</option>
+        <option value="300">Sample 300 payments</option>
+        <option value="500">Sample 500 payments</option>
+        <option value="1000">Sample 1,000 payments</option>
       </select>
-      <button class="primary" id="run">Run simulation</button>
-      <span id="status" class="sub"></span>
+      <button class="btn primary" id="run">Run</button>
+      <button class="btn ghost" id="theme" aria-label="Switch colour theme">Dark</button>
     </div>
-  </header>
+  </div>
+</header>
 
-  <!-- 1. headline -->
-  <section>
-    <h2>Recovered revenue</h2>
-    <p class="note">What the agent actually got back, on held-out transactions it
-      had never seen. The expected figure is the model's own estimate — shown
-      beside the realised number so it can be checked rather than trusted.</p>
-    <div class="headline">
+<div class="provenance" id="provenance"></div>
+
+<main class="sheetwrap">
+
+  <!-- 1. The verdict: the whole thesis in one figure -------------------- -->
+  <section class="settlement" aria-labelledby="verdict-h">
+    <h1 id="verdict-h" class="hero-fig" data-hero="1">&mdash;</h1>
+    <div class="verdict-figures">
       <div>
-        <div class="big" id="recovered">—</div>
-        <div class="big-label">actually recovered (<span id="recovered-n">—</span> transactions)</div>
+        <div class="hero-label" id="hero-label">recovered</div>
       </div>
-      <div class="stats">
-        <div class="stat"><div class="v" id="expected">—</div><div class="k">expected (model estimate)</div></div>
-        <div class="stat"><div class="v" id="failed">—</div><div class="k">total failed value</div></div>
-        <div class="stat"><div class="v" id="acted">—</div><div class="k">acted on</div></div>
-        <div class="stat"><div class="v" id="rate">—</div><div class="k">of acted-on recovered</div></div>
-      </div>
+      <div class="sub-fig"><div class="v" id="failed">&mdash;</div>
+        <div class="k">failed in total</div></div>
+      <div class="sub-fig"><div class="v" id="acted">&mdash;</div>
+        <div class="k">we acted on</div></div>
+      <div class="sub-fig"><div class="v" id="rate">&mdash;</div>
+        <div class="k">of those came back</div></div>
     </div>
-    <div id="drift"></div>
-  </section>
 
-  <!-- 2. breakdown -->
-  <section>
-    <h2>Failure categories — cards vs UPI</h2>
-    <p class="note">The two rails fail for structurally different reasons, which is
-      why <code>payment_method</code> is a real feature rather than decoration.
-      Cards skew to issuer-side <strong>hard declines</strong>; UPI skews to
-      operational <strong>drop-off</strong> and <strong>soft declines</strong>.</p>
-    <div id="breakdown"></div>
-    <div class="legend">
-      <span><i style="background:var(--card-c)"></i>card</span>
-      <span><i style="background:var(--upi-c)"></i>UPI</span>
+    <p class="voice" id="thesis">Loading this batch&hellip;</p>
+
+    <div class="moneybar">
+      <div class="track" id="moneytrack"></div>
+      <div class="keys" id="moneykeys"></div>
     </div>
-    <div id="skew" class="caveat"></div>
+
+    <button class="disc" data-panel="p-revenue" aria-expanded="false" aria-controls="p-revenue">
+      <span class="caret"></span>Show the numbers behind this</button>
+    <div class="disc-panel" id="p-revenue" hidden></div>
   </section>
 
-  <!-- 3. actions -->
-  <section>
-    <h2>What the agent did</h2>
-    <p class="note">Thresholds were derived from the model's measured score
-      distribution, not guessed. Fraud-blocked transactions are never actioned and
-      never scored — an architectural rule, not a learned preference.</p>
-    <div id="actions"></div>
+  <!-- 2. What needs you: the merchant's front door to every technical panel -->
+  <section class="band" aria-labelledby="needs-h">
+    <div class="band-head"><h2 id="needs-h">What needs you</h2>
+      <span class="band-note">Everything else is handled</span></div>
+    <div class="attention" id="attention"></div>
+    <div id="p-shift-host"></div>
+    <div id="p-fraud-host"></div>
   </section>
 
-  <!-- 4. retry storm -->
-  <section>
-    <h2>Retry storm — before / after</h2>
-    <p class="note">The retry loop was deliberately built without a cap first. Every
-      polling cycle re-queued anything that hadn't succeeded, so the storm
-      concentrated on transactions that could <em>never</em> succeed. Fixed with a
-      per-transaction budget and exponential backoff.</p>
+  <!-- 3. Why the payments failed ---------------------------------------- -->
+  <section class="band" aria-labelledby="why-h">
+    <div class="band-head"><h2 id="why-h">Why the payments failed</h2></div>
+    <p class="voice">Cards and UPI fail for different reasons, so Verdict treats
+      them as two different problems rather than one failure rate.</p>
+    <div class="bars" id="reasons"></div>
+    <div class="railkey">
+      <span><i style="background:var(--rail-card)"></i>Card</span>
+      <span><i style="background:var(--rail-upi)"></i>UPI</span>
+    </div>
+    <p class="voice" id="skew" style="margin-top:22px"></p>
+    <button class="disc" data-panel="p-reasons" aria-expanded="false" aria-controls="p-reasons">
+      <span class="caret"></span>How we tell these apart</button>
+    <div class="disc-panel" id="p-reasons" hidden></div>
+  </section>
+
+  <!-- 4. What we did about it -------------------------------------------- -->
+  <section class="band" aria-labelledby="did-h">
+    <div class="band-head"><h2 id="did-h">What we did about it</h2></div>
+    <p class="voice">Each payment gets the response its failure actually calls for.
+      A bank timeout wants another attempt; a customer who walked away wants a
+      reminder; a permanent decline wants to be left alone.</p>
+    <div class="bars" id="outcomes"></div>
+    <button class="disc" data-panel="p-outcomes" aria-expanded="false" aria-controls="p-outcomes">
+      <span class="caret"></span>How we decide</button>
+    <div class="disc-panel" id="p-outcomes" hidden></div>
+  </section>
+
+  <!-- 5. The retry storm ------------------------------------------------- -->
+  <section class="band" aria-labelledby="storm-h">
+    <div class="band-head"><h2 id="storm-h">We stopped hammering the banks</h2></div>
+    <p class="voice">The first version of the retry loop kept trying until something
+      worked. Mostly it retried payments that could never work &mdash; which costs
+      you goodwill with your bank and your customer, and recovers nothing.</p>
     <div class="storm" id="storm"></div>
-    <div class="verdict" id="storm-verdict"></div>
+    <div id="storm-cost"></div>
+    <button class="disc" data-panel="p-storm" aria-expanded="false" aria-controls="p-storm">
+      <span class="caret"></span>Show the full simulation</button>
+    <div class="disc-panel" id="p-storm" hidden></div>
   </section>
 
-  <!-- 5. feed -->
-  <section>
-    <h2>Live decision feed</h2>
-    <p class="note">One row per transaction. <strong>Click any row</strong> to see why
-      the agent decided what it did — the grounded error-code meaning, the full
-      confidence vector, and the generated explanation.</p>
-    <div class="controls" style="margin-bottom:12px">
-      <select id="f-action"><option value="">All actions</option></select>
-      <select id="f-cat"><option value="">All categories</option></select>
-      <span id="feed-count" class="sub"></span>
+  <!-- 6. The ledger ------------------------------------------------------- -->
+  <section class="band" aria-labelledby="ledger-h">
+    <div class="band-head"><h2 id="ledger-h">Every decision, on the record</h2>
+      <span class="band-note">Select any payment to see the reasoning</span></div>
+    <div class="ledger-tools">
+      <select id="f-action" aria-label="Filter by outcome"><option value="">All outcomes</option></select>
+      <select id="f-cat" aria-label="Filter by reason"><option value="">All reasons</option></select>
+      <button class="btn ghost" id="f-clear" hidden>Clear filters</button>
+      <span class="ledger-count" id="ledger-count"></span>
     </div>
-    <table>
-      <thead><tr>
-        <th>Transaction</th><th>Method</th><th class="num">Amount</th>
-        <th>Diagnosis</th><th class="num">P(recovery)</th><th>Action</th>
-      </tr></thead>
-      <tbody id="feed"></tbody>
-    </table>
+    <div class="ledger-scroll">
+      <table class="ledger">
+        <thead><tr>
+          <th>Payment</th><th>Rail</th><th class="num">Amount</th>
+          <th>Why it failed</th><th class="num">Odds of recovery</th><th>What we did</th>
+        </tr></thead>
+        <tbody id="ledger"></tbody>
+      </table>
+    </div>
   </section>
 
-</div>
+  <!-- 7. Colophon --------------------------------------------------------- -->
+  <section class="band" aria-labelledby="how-h">
+    <div class="band-head"><h2 id="how-h">How this works</h2></div>
+    <div class="colophon">
+      <div>
+        <h3>Two models, then a decision</h3>
+        <p>One model works out <em>why</em> a payment failed. A second estimates
+          whether a recovery attempt would actually succeed. Only then does
+          anything get decided.</p>
+        <div class="flow">payment failed
+   |
+   v
+why did it fail?  ---->  blocked as fraud
+   |                            |
+   |                        stop here
+   v
+would recovery work?
+   |
+   v
+what should we do?  ---->  and why we did it</div>
+      </div>
+      <div>
+        <h3>Fraud is stopped, not scored</h3>
+        <p>A payment diagnosed as fraud never reaches the recovery model and never
+          reaches a language model. It is not a filter applied afterwards &mdash;
+          there is no path through the code where it gets that far.</p>
+        <div id="fraud-guard"></div>
+      </div>
+      <div>
+        <h3>How well it actually works</h3>
+        <div id="quality"></div>
+        <button class="disc" data-panel="p-quality" aria-expanded="false" aria-controls="p-quality">
+          <span class="caret"></span>Show the measured numbers</button>
+        <div class="disc-panel" id="p-quality" hidden></div>
+      </div>
+      <div>
+        <h3>Where the explanations come from</h3>
+        <div id="llm-note"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
 
 <script>
-// ---------------------------------------------------------------- helpers ---
-const $ = s => document.querySelector(s);
-const money = n => n == null ? "—" :
-  "₹" + Math.round(n).toLocaleString("en-IN");
-const pct = n => n == null ? "—" : (n * 100).toFixed(1) + "%";
-const titled = s => (s || "").replace(/_/g, " ");
+"use strict";
 
-const CAT_COLOR = { hard_decline: "--hard", soft_decline: "--soft",
-                    customer_dropoff: "--drop", fraud_block: "--fraud" };
-const ACT_COLOR = { auto_retry_now: "--auto", retry_later: "--later",
-                    customer_nudge: "--nudge", escalate: "--esc", no_action: "--none" };
-const CAT_ORDER = ["hard_decline", "soft_decline", "customer_dropoff", "fraud_block"];
-const ACT_ORDER = ["auto_retry_now", "retry_later", "customer_nudge", "escalate", "no_action"];
-const cssv = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+/* =========================================================== helpers === */
+const $ = s => document.querySelector(s);
+const el = (id) => document.getElementById(id);
+
+const inr = n => (n == null || isNaN(n)) ? "—"
+  : "₹" + Math.round(n).toLocaleString("en-IN");
+const pct = (n, dp = 1) => (n == null || isNaN(n)) ? "—"
+  : (n * 100).toFixed(dp) + "%";
+const num = n => (n == null || isNaN(n)) ? "—" : Number(n).toLocaleString("en-IN");
+const esc = s => String(s == null ? "" : s)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;");
 
 async function getJSON(url, opts) {
   const r = await fetch(url, opts);
-  if (!r.ok) throw new Error(`${url} -> ${r.status}`);
+  if (!r.ok) throw new Error(url + " responded " + r.status);
   return r.json();
 }
 
-let FEED = [];
+/* Merchant vocabulary. The model's own class names are never printed above a
+   disclosure -- they live in REASON[x].technical and OUTCOME[x].technical, which
+   the "how we tell these apart" and "how we decide" panels render. */
+const REASON = {
+  hard_decline: {
+    name: "The bank said no, for good", short: "Bank said no",
+    gloss: "Not enough funds, an expired card, or a limit already hit",
+    technical: "hard_decline", colour: "var(--lost)",
+  },
+  soft_decline: {
+    name: "A temporary glitch", short: "Temporary glitch",
+    gloss: "The bank or the network timed out — worth another try",
+    technical: "soft_decline", colour: "var(--rail-upi)",
+  },
+  customer_dropoff: {
+    name: "The customer walked away", short: "Customer left",
+    gloss: "They left before finishing; nothing was ever declined",
+    technical: "customer_dropoff", colour: "var(--watch)",
+  },
+  fraud_block: {
+    name: "Blocked as fraud", short: "Blocked as fraud",
+    gloss: "Stopped before it could go through",
+    technical: "fraud_block", colour: "var(--fraud)",
+  },
+};
+
+const OUTCOME = {
+  auto_retry_now: {
+    name: "Retried it straight away", short: "Retried now",
+    gloss: "", technical: "auto_retry_now", colour: "var(--act-1)", acts: true,
+  },
+  retry_later: {
+    name: "Queued a retry for later", short: "Retry queued",
+    gloss: "Backing off first, so the bank gets a fair gap between attempts",
+    technical: "retry_later", colour: "var(--act-2)", acts: true,
+  },
+  customer_nudge: {
+    name: "Nudged the customer", short: "Customer nudged",
+    gloss: "A silent retry cannot finish a payment somebody walked away from",
+    technical: "customer_nudge", colour: "var(--act-3)", acts: true,
+  },
+  escalate: {
+    name: "Sent to you to decide", short: "Needs you",
+    gloss: "Too close to call automatically",
+    technical: "escalate", colour: "var(--act-4)", acts: false,
+  },
+  no_action: {
+    name: "Left it alone", short: "Left alone",
+    gloss: "Nothing would have recovered these. Retrying only costs you.",
+    technical: "no_action", colour: "var(--act-5)", acts: false,
+  },
+};
+
+const REASON_ORDER = ["hard_decline", "soft_decline", "customer_dropoff", "fraud_block"];
+const OUTCOME_ORDER = ["auto_retry_now", "retry_later", "customer_nudge", "escalate", "no_action"];
+
+const reasonOf = k => REASON[k] || { name: k, short: k, gloss: "", technical: k, colour: "var(--ink-soft)" };
+const outcomeOf = k => OUTCOME[k] || { name: k, short: k, gloss: "", technical: k, colour: "var(--ink-soft)" };
+
+/* What the drift monitor watches, in words a merchant recognises. */
+const WATCHED = {
+  payment_method: "Card vs UPI mix",
+  failure_category: "Why payments failed",
+  "error_code[card]": "Card decline codes",
+  "error_code[upi]": "UPI decline codes",
+  amount: "Payment amounts",
+  seconds_to_failure: "How fast payments failed",
+};
+const READING = { LOW: "Steady", MODERATE: "Noticeable", HIGH: "Investigate" };
+
+/* =========================================================== app state === */
+let ALL = [];        // every decision in the batch (from /simulate/*)
+let FEED = [];       // the most recent slice, rendered as the ledger
 let FEED_TOTAL = 0;
+let FEATURES = {};   // model inputs by transaction_id, needed by POST /decide
+let ROWS = [];       // the currently filtered ledger rows
+let THRESHOLDS = { auto_retry_at: 0.5, give_up_below: 0.25 };
 
-// Feature columns keyed by transaction_id, from the /simulate/seed response.
-// The feed itself is the audit log (/decisions), which carries the explanation
-// and the grounded code meaning but NOT the model inputs -- and POST /decide
-// needs those inputs. So the two are joined here rather than widening the audit
-// record with fields no auditor would want.
-let FEATURES = {};
-
-// The stats sections already summarise the whole batch. The feed is for reading
-// individual decisions, so cap it -- rendering 1000 rows (each with a hidden
-// detail row) produced a 20,000px page nobody can navigate.
+/* The stats bands already summarise the whole batch. The ledger is for reading
+   individual decisions, so it is capped -- 1,000 rows each with a hidden detail
+   row produced a page nobody could navigate. */
 const FEED_LIMIT = 60;
 
-// ------------------------------------------------------------- rendering ---
-function renderHeadline(rev) {
-  $("#recovered").textContent = money(rev.actual_recovered_value);
-  $("#recovered-n").textContent = rev.actual_recovered_count ?? "—";
-  $("#expected").textContent = money(rev.expected_recovered_value);
-  $("#failed").textContent = money(rev.total_failed_value);
-  $("#acted").textContent = `${rev.acted_on_count} txns · ${money(rev.acted_on_value)}`;
-  $("#rate").textContent = rev.acted_on_count
-    ? pct(rev.actual_recovered_count / rev.acted_on_count) : "—";
+/* ============================================================== theme === */
+(function theme() {
+  const root = document.documentElement;
+  const btn = el("theme");
+  let stored = null;
+  try { stored = localStorage.getItem("verdict-theme"); } catch (e) { /* private mode */ }
+  if (stored === "dark" || stored === "light") root.setAttribute("data-theme", stored);
+
+  const systemDark = () => window.matchMedia
+    && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const isDark = () => (root.getAttribute("data-theme") || (systemDark() ? "dark" : "light")) === "dark";
+  const sync = () => { btn.textContent = isDark() ? "Light" : "Dark"; };
+
+  btn.addEventListener("click", () => {
+    const next = isDark() ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("verdict-theme", next); } catch (e) { /* private mode */ }
+    sync();
+  });
+  sync();
+})();
+
+/* ========================================================= disclosure === */
+/* One device for every "the technical layer is here if you want it" moment. */
+function wireDisclosures(scope) {
+  (scope || document).querySelectorAll(".disc[data-panel]").forEach(btn => {
+    if (btn.dataset.wired) return;
+    btn.dataset.wired = "1";
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      const panel = el(btn.dataset.panel);
+      if (!panel) return;
+      const open = panel.hidden;
+      panel.hidden = !open;
+      btn.setAttribute("aria-expanded", String(open));
+      const on = btn.dataset.labelOn, off = btn.dataset.labelOff;
+      if (on && off) btn.lastChild.textContent = open ? off : on;
+    });
+  });
 }
 
-function renderBreakdown(b) {
-  const byMethod = b.category_by_method || {};
-  const cats = CAT_ORDER.filter(c => (b.by_category || {})[c] != null);
-  const max = Math.max(...cats.map(c => b.by_category[c]), 1);
+function kvRows(pairs) {
+  return '<div class="kv">' + pairs.map(([k, v, plain]) =>
+    "<div>" + k + '</div><div class="' + (plain ? "said" : "") + '">' + v + "</div>"
+  ).join("") + "</div>";
+}
 
-  $("#breakdown").innerHTML = cats.map(cat => {
+/* ===================================================== 1. the verdict === */
+function renderVerdict(rev) {
+  const total = rev.total_failed_value || 0;
+  const actedVal = rev.acted_on_value || 0;
+  const hasReal = rev.actual_recovered_value != null;
+  const got = hasReal ? rev.actual_recovered_value : rev.expected_recovered_value;
+  const gotN = hasReal ? rev.actual_recovered_count : null;
+
+  el("verdict-h").textContent = inr(got);
+  el("hero-label").textContent = hasReal
+    ? "recovered from " + num(gotN) + " payments"
+    : "expected to recover (no outcome data in this batch)";
+
+  el("failed").textContent = inr(total);
+  el("acted").textContent = num(rev.acted_on_count);
+  el("rate").textContent = (hasReal && rev.acted_on_count)
+    ? pct(rev.actual_recovered_count / rev.acted_on_count) : "—";
+
+  el("thesis").innerHTML = hasReal
+    ? "We got back <strong>" + inr(got) + "</strong> of the <strong>" + inr(total)
+      + "</strong> that failed here, and every rupee has a reason attached to it."
+    : "This batch has no recorded outcomes, so the figure above is what the model "
+      + "expects to recover rather than what came back.";
+
+  // Where the failed money actually went: recovered, tried but lost, unrecoverable.
+  const lostAfterTrying = Math.max(actedVal - (hasReal ? got : 0), 0);
+  const untouched = Math.max(total - actedVal, 0);
+  const w = v => total > 0 ? (v / total) * 100 : 0;
+  el("moneytrack").innerHTML =
+      '<span style="width:' + w(hasReal ? got : 0) + '%;background:var(--recovered)"></span>'
+    + '<span style="width:' + w(lostAfterTrying) + '%;background:var(--act-3)"></span>'
+    + '<span style="width:' + w(untouched) + '%;background:var(--rule-strong)"></span>';
+  el("moneykeys").innerHTML = [
+    ['var(--recovered)', "Recovered", inr(hasReal ? got : 0)],
+    ['var(--act-3)', "Tried, did not come back", inr(lostAfterTrying)],
+    ['var(--rule-strong)', "Nothing would have worked", inr(untouched)],
+  ].map(([c, k, v]) =>
+    '<span class="key"><i style="background:' + c + '"></i>' + k + " <b>" + v + "</b></span>"
+  ).join("");
+
+  const over = (rev.expected_recovered_value || 0) - (hasReal ? got : 0);
+  el("p-revenue").innerHTML =
+    kvRows([
+      ["What the model predicted before the fact", inr(rev.expected_recovered_value)],
+      ["What actually came back", inr(rev.actual_recovered_value)],
+      ["How close that was",
+        hasReal ? (over > 0 ? "over-estimated by " + inr(over)
+                            : "under-estimated by " + inr(Math.abs(over)))
+                : "no outcomes recorded", true],
+      ["Total value of failed payments", inr(total)],
+      ["Value we acted on", inr(actedVal)],
+      ["Payments we acted on", num(rev.acted_on_count)],
+      ["Payments in this batch", num(rev.n)],
+    ])
+    + "<h4>What counts as acting</h4>"
+    + "<p>Retrying now, queuing a retry, and nudging the customer all count as acting. "
+      + "Sending a payment to you and leaving it alone do not.</p>"
+    + "<h4>Why you can check this number</h4>"
+    + "<p>These are held-out payments &mdash; the models never saw them while "
+      + "learning. The predicted figure is shown next to the real one so the "
+      + "estimate can be checked rather than taken on trust.</p>";
+}
+
+/* ================================================= 2. what needs you === */
+function renderAttention() {
+  const escalated = ALL.filter(d => d.action === "escalate");
+  const escVal = escalated.reduce((s, d) => s + (d.amount || 0), 0);
+  const fraud = ALL.filter(d => d.fraud_blocked);
+  const hedged = ALL.filter(d => d.uncertainty_reason || d.uncertainty_adjusted);
+
+  const needs = escalated.length
+    ? '<div class="att needs">'
+      + '<div class="lede"><b>' + num(escalated.length) + "</b> payments need your call</div>"
+      + '<div class="body">We were not confident enough to act on these alone. '
+        + "<b>" + inr(escVal) + "</b> is sitting in them.</div>"
+      + '<button class="linkbtn" id="go-escalated">See these payments</button></div>'
+    : '<div class="att calm">'
+      + '<div class="lede">Nothing needs your call</div>'
+      + '<div class="body">Every payment here had a clear enough answer to act on '
+        + "automatically.</div></div>";
+
+  const fraudCell = '<div class="att fraud">'
+    + '<div class="lede"><b>' + num(fraud.length) + "</b> blocked as fraud</div>"
+    + '<div class="body">Never retried, never scored, never sent to a language model. '
+      + "That is a hard rule, not a judgement call.</div>"
+    + '<button class="disc" data-panel="p-fraud" aria-expanded="false" aria-controls="p-fraud">'
+      + '<span class="caret"></span>How the block works</button></div>';
+
+  el("attention").innerHTML = needs
+    + '<div class="att shift" id="att-shift"><div class="lede">Checking your payment mix</div>'
+      + '<div class="body">Comparing this batch against what the models learned from.</div></div>'
+    + fraudCell;
+
+  el("p-fraud-host").innerHTML =
+    '<div class="disc-panel" id="p-fraud" hidden>'
+    + "<h4>Three independent guards, no single point of failure</h4>"
+    + "<p>A payment diagnosed as fraud returns before the recovery model or the "
+      + "language model are reached at all. It is not a filter applied to a "
+      + "computed result, and not &ldquo;call them, then ignore the answer&rdquo; &mdash; "
+      + "there is no path through the code where a fraud-blocked payment reaches "
+      + "either one. The recovery model separately refuses to train on fraud rows, "
+      + "and the language-model adapters separately refuse to be invoked with a "
+      + "fraud diagnosis.</p>"
+    + "<h4>Checked live against this batch</h4>"
+    + kvRows([
+        ["Diagnosed as fraud", num(fraud.length)],
+        ["Given a recovery action", num(fraud.filter(d => d.action !== "no_action").length)],
+        ["Given a recovery score", num(fraud.filter(d => d.recovery_prob != null).length)],
+      ])
+    + "<p>The second and third figures are counted from this batch on every run. "
+      + "They are expected to be zero, and the test suite fails the build if they "
+      + "ever are not.</p></div>";
+
+  // Live fraud guarantee, repeated in the colophon.
+  el("fraud-guard").innerHTML = kvRows([
+    ["Diagnosed as fraud in this batch", num(fraud.length)],
+    ["Given a recovery action", num(fraud.filter(d => d.action !== "no_action").length)],
+    ["Given a recovery score", num(fraud.filter(d => d.recovery_prob != null).length)],
+  ]);
+
+  const go = el("go-escalated");
+  if (go) go.addEventListener("click", () => {
+    el("f-action").value = "escalate";
+    renderLedger();
+    el("ledger-h").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  wireDisclosures();
+  return { escalated, fraud, hedged };
+}
+
+/* ============================================ 3. why payments failed === */
+function renderReasons(b) {
+  const byMethod = b.category_by_method || {};
+  const cats = REASON_ORDER.filter(c => (b.by_category || {})[c] != null);
+  const max = Math.max.apply(null, cats.map(c => b.by_category[c]).concat([1]));
+
+  el("reasons").innerHTML = cats.map(cat => {
+    const r = reasonOf(cat);
     const card = (byMethod.card || {})[cat] || 0;
     const upi = (byMethod.upi || {})[cat] || 0;
-    const total = card + upi;
-    // widths are a share of the largest category, so bars stay comparable
     const w = v => (v / max) * 100;
-    return `<div class="row">
-      <div class="lbl"><span class="chip" style="border-color:${cssv("--" + CAT_COLOR[cat].slice(2))};
-        color:${cssv(CAT_COLOR[cat])}">${titled(cat)}</span></div>
-      <div class="track">
-        <span style="width:${w(card)}%;background:var(--card-c)" title="card: ${card}"></span>
-        <span style="width:${w(upi)}%;background:var(--upi-c)" title="UPI: ${upi}"></span>
-      </div>
-      <div class="amt">${total} &nbsp;<span style="color:var(--card-c)">${card}</span>/<span style="color:var(--upi-c)">${upi}</span></div>
-    </div>`;
+    return '<div class="barrow">'
+      + '<div><span class="name"><span class="dot" style="background:' + r.colour
+        + '"></span>' + r.name + '</span><span class="gloss">' + r.gloss + "</span></div>"
+      + '<div class="track">'
+        + '<span style="width:' + w(card) + '%;background:var(--rail-card)"></span>'
+        + '<span style="width:' + w(upi) + '%;background:var(--rail-upi)"></span></div>'
+      + '<div class="tally"><b>' + num(card + upi) + '</b> payments'
+        + '<span class="split"><span class="c">' + num(card) + ' card</span>'
+        + '&nbsp;&nbsp;<span class="u">' + num(upi) + ' UPI</span></span></div>'
+      + '</div>';
   }).join("");
 
-  // Name the skew explicitly rather than leaving a judge to infer it.
   const share = (m, c) => {
-    const tot = Object.values(byMethod[m] || {}).reduce((a, x) => a + x, 0) || 1;
-    return ((byMethod[m] || {})[c] || 0) / tot;
+    const rails = byMethod[m] || {};
+    const tot = Object.keys(rails).reduce((a, k) => a + rails[k], 0) || 1;
+    return (rails[c] || 0) / tot;
   };
-  $("#skew").innerHTML =
-    `Cards are <strong>${pct(share("card", "hard_decline"))}</strong> hard declines vs
-     <strong>${pct(share("upi", "hard_decline"))}</strong> on UPI; UPI is
-     <strong>${pct(share("upi", "customer_dropoff"))}</strong> customer drop-off vs
-     <strong>${pct(share("card", "customer_dropoff"))}</strong> on cards. That split is
-     designed into the data and the classifier has to learn around it.`;
+  el("skew").innerHTML =
+    "<strong>" + pct(share("card", "hard_decline"), 0) + "</strong> of your card "
+    + "failures are permanent declines. <strong>" + pct(share("upi", "customer_dropoff"), 0)
+    + "</strong> of your UPI failures are people abandoning the app. Those need "
+    + "completely different responses, which is the whole reason this splits by rail.";
+
+  const rails = b.by_payment_method || {};
+  el("p-reasons").innerHTML =
+    "<h4>What the classifier is actually predicting</h4>"
+    + '<table class="data"><thead><tr><th>Shown as</th><th>Class name</th>'
+      + '<th class="n">Card</th><th class="n">UPI</th><th class="n">Total</th></tr></thead><tbody>'
+    + cats.map(cat => {
+        const r = reasonOf(cat);
+        const card = (byMethod.card || {})[cat] || 0;
+        const upi = (byMethod.upi || {})[cat] || 0;
+        return "<tr><td>" + r.name + '</td><td class="mono">' + r.technical
+          + '</td><td class="n">' + num(card) + '</td><td class="n">' + num(upi)
+          + '</td><td class="n">' + num(card + upi) + "</td></tr>";
+      }).join("")
+    + "</tbody></table>"
+    + "<h4>Grounded in the bank's own response</h4>"
+    + "<p>The diagnosis starts from the decline code the bank actually returned, "
+      + "matched against a verified table of what each code means &mdash; ISO 8583 "
+      + "references for cards, the NPCI code list for UPI. Nothing is inferred from "
+      + "a code the table does not cover; an unknown code says so rather than "
+      + "guessing.</p>"
+    + "<h4>Rails in this batch</h4>"
+    + kvRows([["Card payments", num(rails.card || 0)], ["UPI payments", num(rails.upi || 0)]])
+    + "<p>Because the two rails fail for structurally different reasons, the rail "
+      + "itself is a real input to the model rather than a label on a chart.</p>";
+  wireDisclosures();
 }
 
-function renderActions(b) {
-  const acts = ACT_ORDER.filter(a => (b.by_action || {})[a] != null);
-  const max = Math.max(...acts.map(a => b.by_action[a]), 1);
+/* ============================================ 4. what we did about it === */
+function renderOutcomes(b) {
+  const acts = OUTCOME_ORDER.filter(a => (b.by_action || {})[a] != null);
+  const max = Math.max.apply(null, acts.map(a => b.by_action[a]).concat([1]));
   const total = acts.reduce((s, a) => s + b.by_action[a], 0) || 1;
 
-  $("#actions").innerHTML = acts.map(a => {
+  el("outcomes").innerHTML = acts.map(a => {
+    const o = outcomeOf(a);
     const n = b.by_action[a];
-    return `<div class="row">
-      <div class="lbl">${titled(a)}</div>
-      <div class="track"><span style="width:${(n / max) * 100}%;background:var(${ACT_COLOR[a]})"></span></div>
-      <div class="amt">${n} · ${pct(n / total)}</div>
-    </div>`;
+    return '<div class="barrow">'
+      + '<div><span class="name"><span class="dot" style="background:' + o.colour
+        + '"></span>' + o.name + "</span>"
+        + (o.gloss ? '<span class="gloss">' + o.gloss + "</span>" : "") + "</div>"
+      + '<div class="track"><span style="width:' + (n / max) * 100
+        + "%;background:" + o.colour + '"></span></div>'
+      + '<div class="tally"><b>' + num(n) + "</b> payments"
+        + '<span class="split">' + pct(n / total, 0) + " of the batch</span></div>"
+      + "</div>";
   }).join("");
+
+  el("p-outcomes").innerHTML =
+    "<h4>The two lines every payment is measured against</h4>"
+    + kvRows([
+        ["Retry straight away, at or above", pct(THRESHOLDS.auto_retry_at, 0) + " odds"],
+        ["Stop trying, below", pct(THRESHOLDS.give_up_below, 0) + " odds"],
+      ])
+    + "<p>Neither number was picked in advance. Both come from the recovery model's "
+      + "measured score distribution on held-out payments: the upper line is where "
+      + "recovery becomes more likely than not, and the lower line sits in the "
+      + "empirical valley between payments worth trying and payments that are gone.</p>"
+    + "<h4>What we do when the model is not sure</h4>"
+    + "<p>Every score carries a range, not just a number. When that range straddles "
+      + "a line, the response changes but the ambition does not: near the upper line "
+      + "we still retry, just with a delay instead of immediately; near the lower "
+      + "line we send the payment to you rather than writing it off silently. "
+      + "Payments in that second group recover several times more often than "
+      + "confident write-offs, which is why they are worth your attention.</p>"
+    + "<h4>Class names, for the record</h4>"
+    + '<table class="data"><thead><tr><th>Shown as</th><th>Action</th>'
+      + '<th class="n">Count</th><th class="n">Share</th></tr></thead><tbody>'
+    + acts.map(a => "<tr><td>" + outcomeOf(a).name + '</td><td class="mono">'
+        + outcomeOf(a).technical + '</td><td class="n">' + num(b.by_action[a])
+        + '</td><td class="n">' + pct(b.by_action[a] / total) + "</td></tr>").join("")
+    + "</tbody></table>";
+  wireDisclosures();
 }
 
-function renderStorm(s) {
-  const b = s.before, a = s.after;
-  const metric = (title, bv, av, fmt = x => x.toLocaleString()) => {
-    const m = Math.max(bv, av, 1);
-    return `<div class="metric">
-      <div class="t">${title}</div>
-      <div class="pair"><span class="b">${fmt(bv)}</span><span class="arw">→</span><span class="a">${fmt(av)}</span></div>
-      <div class="minibars">
-        <div class="minibar" style="width:${(bv / m) * 100}%;background:var(--before)"></div>
-        <div class="minibar" style="width:${(av / m) * 100}%;background:var(--after)"></div>
-      </div>
-    </div>`;
-  };
-
-  $("#storm").innerHTML = [
-    metric("Total retry attempts", b.total_attempts, a.total_attempts),
-    metric("Attempts that could never succeed", b.wasted_attempts, a.wasted_attempts),
-    metric("Worst case on one transaction", b.attempts_per_txn_max, a.attempts_per_txn_max),
-    metric("Still queued at end", b.still_queued_at_end, a.still_queued_at_end),
-    metric("Transactions recovered", b.recovered, a.recovered),
-  ].join("");
-
-  const cut = Math.round((s.attempt_reduction || 0) * 100);
-  const lostValue = b.recovered_value - a.recovered_value;
-  $("#storm-verdict").innerHTML =
-    `<strong>Retry traffic cut ${cut}%</strong> (${b.total_attempts.toLocaleString()} →
-     ${a.total_attempts.toLocaleString()} attempts), worst case
-     ${b.attempts_per_txn_max} → ${a.attempts_per_txn_max} attempts on a single transaction.
-     The uncapped loop left <strong>${b.still_queued_at_end}</strong> transactions retrying
-     forever; the capped one terminates.
-     <div class="caveat">Honest cost: the budget gives up
-     ${Math.abs(s.recovered_delta)} recoveries (${money(lostValue)}) to save that traffic.
-     Three attempts recover ~94% of what's recoverable; the uncapped loop eventually
-     gets ~100% by hammering the issuer indefinitely — and 84.5% of its attempts went
-     to transactions that could never succeed.</div>`;
+/* ============================================ 2b. has anything shifted === */
+/* Read-only monitoring. This observes the batch and reports; it cannot change
+   a threshold or a decision. */
+function plainShift(d) {
+  const f = (d.features || {})[d.driver] || {};
+  const top = (f.top_contributors || [])[0];
+  const what = WATCHED[d.driver] || d.driver;
+  if (!top) return "Nothing in this batch looks unusual against what the models learned from.";
+  const dir = top.actual > top.expected ? "up to" : "down to";
+  return what + " moved the most: <strong>" + esc(top.bin) + "</strong> went from "
+    + pct(top.expected, 0) + " of payments like these " + dir + " <strong>"
+    + pct(top.actual, 0) + "</strong> here.";
 }
 
-// Interval under the point estimate: the numeric range plus a small bar showing
-// where that range sits on 0..1, with a tick at the threshold it depends on.
-// Rows without an interval (fraud-blocked, or an older model artifact) render
-// exactly as they did before this existed.
-function intervalCell(d) {
-  const iv = d.recovery_interval;
-  if (!iv) return "";
-  const left = iv.lo * 100, w = Math.max((iv.hi - iv.lo) * 100, 1.5);
-  // the cutoff this row's action actually turned on
-  const cut = d.recovery_probability >= 0.5 || iv.hi >= 0.5 ? 50 : 25;
-  const wide = d.uncertainty_adjusted ? "var(--esc)" : "var(--muted)";
-  return `<div class="iv" title="Spread across Model 2's five calibration folds — model disagreement, not a confidence interval">
-      <div class="iv-track"><span class="iv-tick" style="left:${cut}%"></span>
-        <span class="iv-span" style="left:${left}%;width:${w}%;background:${wide}"></span></div>
-      <div class="iv-num">${pct(iv.lo)}–${pct(iv.hi)}</div>
-    </div>`;
-}
+function renderShift(d, constructed) {
+  const cell = el("att-shift");
+  if (!cell) return;
 
-// Read-only monitoring badge. Deliberately minimal -- a UI rebuild is planned.
-function renderDrift(d, constructed) {
-  const el = $("#drift");
-  if (!d || !d.overall_verdict) { el.innerHTML = ""; return; }
-  el.innerHTML = `<div class="drift">
-      <b class="${d.overall_verdict}">drift: ${d.overall_verdict}</b>
-      <span class="msg">max PSI ${d.max_psi} &middot; ${d.driver_detail}</span>
-      ${constructed ? `<span class="warn">&mdash; this batch's drift was
-        introduced deliberately for demonstration, not observed</span>` : ""}
-    </div>`;
-}
-
-async function loadDrift(constructed) {
-  try {
-    renderDrift(await getJSON("/stats/drift"), constructed);
-  } catch {
-    $("#drift").innerHTML = `<div class="drift"><span class="msg">Drift monitor
-      unavailable &mdash; run <span class="mono">python scripts/train.py</span>
-      to build the baseline.</span></div>`;
-  }
-}
-
-function renderFeed() {
-  const fa = $("#f-action").value, fc = $("#f-cat").value;
-  const rows = FEED.filter(d =>
-    (!fa || d.action === fa) && (!fc || d.predicted_category === fc));
-
-  $("#feed-count").textContent =
-    `showing ${rows.length} of the ${FEED_TOTAL.toLocaleString()} most recent decisions`
-    + (FEED_TOTAL > FEED.length ? ` (latest ${FEED.length} loaded)` : "");
-
-  if (!rows.length) {
-    $("#feed").innerHTML = `<tr><td colspan="6" class="empty">No transactions match.</td></tr>`;
+  if (!d || !d.overall_verdict) {
+    cell.className = "att calm";
+    cell.innerHTML = '<div class="lede">Pattern monitoring is not set up</div>'
+      + '<div class="body">Run <span class="mono">python scripts/train.py</span> to build '
+      + "the baseline this compares against.</div>";
     return;
   }
 
-  $("#feed").innerHTML = rows.map((d, i) => {
-    const conf = d.category_probabilities
-      ? Math.max(...Object.values(d.category_probabilities)) : null;
-    return `<tr class="head ${d.fraud_blocked ? "fraudrow" : ""}" data-i="${i}">
-        <td class="mono">${d.transaction_id ?? "—"}</td>
-        <td>${(d.payment_method || "").toUpperCase()}</td>
-        <td class="num">${money(d.amount)}</td>
-        <td><span class="badge" style="background:rgba(255,255,255,.06);color:var(${CAT_COLOR[d.predicted_category] || "--none"})">
-            ${titled(d.predicted_category)}</span>
-            <span class="muted" style="font-size:11.5px">${conf != null ? pct(conf) : ""}</span></td>
-        <td class="num">${d.fraud_blocked
-            ? '<span class="muted" title="never computed for fraud">not scored</span>'
-            : `${pct(d.recovery_probability)}${intervalCell(d)}`}</td>
-        <td><span class="badge" style="background:var(${ACT_COLOR[d.action] || "--none"});color:#08130f">
-            ${titled(d.action)}</span></td>
-      </tr>
-      <tr class="why" id="why-${i}" hidden><td colspan="6"><div class="why-inner">
-        <h4>Why</h4>
-        ${d.uncertainty_adjusted ? `<div class="adj">
-            <strong>Uncertainty changed this decision.</strong>
-            ${d.uncertainty_adjusted === "uncertain_at_auto_retry_threshold"
-              ? `The point estimate (${pct(d.recovery_probability)}) cleared the
-                 auto-retry line, but the model's folds disagree across it
-                 (${pct(d.recovery_interval.lo)}–${pct(d.recovery_interval.hi)}).
-                 Retrying with backoff instead of immediately &mdash; still recovering,
-                 just not asserting confidence the model doesn't have.`
-              : `The point estimate (${pct(d.recovery_probability)}) was below the
-                 give-up line, but the interval crosses it
-                 (${pct(d.recovery_interval.lo)}–${pct(d.recovery_interval.hi)}).
-                 Sent for human review rather than silently written off &mdash;
-                 transactions like this recover 3.3&times; more often than confident
-                 give-ups.`}
-          </div>` : ""}
-        <p>${d.explanation || '<span class="muted">No explanation recorded.</span>'}</p>
-        <h4>Grounded in the bank's actual response</h4>
-        <p class="grounded">${d.error_code
-            ? `<span class="mono">${d.error_code}</span> — ` : ""}${d.error_code_meaning || "—"}</p>
-        <h4>Diagnosis confidence</h4>
-        <div class="probs">${Object.entries(d.category_probabilities || {})
-            .sort((x, y) => y[1] - x[1])
-            .map(([k, v]) => `<span class="prob" style="color:var(${CAT_COLOR[k] || "--none"})">
-                 ${titled(k)} <b>${pct(v)}</b></span>`).join("")}</div>
-        ${d.fraud_blocked
-          ? `<p class="muted">Fraud-blocked: the recovery model and the language model were
-             never called for this transaction. No recovery estimate exists to display.</p>`
-          : `<button data-live="${i}">Explain live with Gemini</button>
-             <span class="muted" style="font-size:12px">&nbsp;one API call — the feed above uses
-             offline templates to protect the free-tier quota</span>
-             <div id="live-${i}" hidden></div>`}
-      </div></td></tr>`;
+  const v = d.overall_verdict;
+  const lede = v === "LOW" ? "Your payment mix looks normal"
+             : v === "MODERATE" ? "Your payment mix has shifted"
+             : "Your payment mix has shifted sharply";
+  cell.className = "att " + (v === "LOW" ? "calm" : "shift");
+  cell.innerHTML = '<div class="lede">' + lede + "</div>"
+    + '<div class="body">' + plainShift(d)
+      + (constructed ? "<br><br><b>This shift was built deliberately</b> to show the "
+          + "monitor firing. It is not traffic anyone observed." : "") + "</div>"
+    + '<button class="disc" data-panel="p-shift" aria-expanded="false" aria-controls="p-shift">'
+      + '<span class="caret"></span>What changed</button>';
+
+  const feats = d.features || {};
+  const rows = Object.keys(feats).map(name => {
+    const f = feats[name];
+    if (f.psi == null) return "<tr><td>" + (WATCHED[name] || esc(name))
+      + '</td><td class="n">—</td><td>—</td><td>' + esc(f.note || "not scored in this batch")
+      + "</td></tr>";
+    const top = (f.top_contributors || [])[0];
+    return "<tr><td>" + (WATCHED[name] || esc(name)) + '</td><td class="n">'
+      + f.psi.toFixed(3) + '</td><td class="read ' + f.verdict + '">'
+      + (READING[f.verdict] || f.verdict) + "</td><td>"
+      + (top ? esc(top.bin) + ": " + pct(top.actual, 1) + " here against "
+               + pct(top.expected, 1) + " before"
+            : "nothing stands out") + "</td></tr>";
   }).join("");
 
-  $("#feed").querySelectorAll("tr.head").forEach(tr => {
-    tr.addEventListener("click", () => {
-      const el = $("#why-" + tr.dataset.i);
-      el.hidden = !el.hidden;
+  el("p-shift-host").innerHTML =
+    '<div class="disc-panel" id="p-shift" hidden><p>' + plainShift(d) + "</p>"
+    + '<table class="data"><thead><tr><th>What we watch</th><th class="n">How far it moved</th>'
+      + "<th>Reading</th><th>What moved most</th></tr></thead><tbody>" + rows + "</tbody></table>"
+    + '<p class="scale-note">The middle column is the population stability index, '
+      + "the standard measure banks use to check whether a scorecard is still "
+      + "looking at the same kind of traffic it was built on. Below 0.10 is steady "
+      + "&middot; 0.10 to 0.25 is noticeable &middot; above 0.25 is worth "
+      + "investigating. The overall reading is the worst single row, never an "
+      + "average, so one badly drifted feature cannot hide behind five calm ones.</p>"
+    + kvRows([
+        ["Payments compared", num(d.n_rows)],
+        ["Compared against", num(d.baseline_train_rows) + " training payments"],
+        ["Worst reading", (d.max_psi != null ? d.max_psi.toFixed(3) : "—")
+          + " (" + (WATCHED[d.driver] || esc(d.driver || "")) + ")"],
+      ])
+    + (d.label_drift_note ? "<p>" + esc(d.label_drift_note) + "</p>" : "")
+    + '<div id="p-shift-compare"></div></div>';
+  wireDisclosures();
+}
+
+async function loadShift(constructed) {
+  try {
+    renderShift(await getJSON("/stats/drift"), constructed);
+  } catch (e) {
+    renderShift(null, constructed);
+  }
+  // A committed side-by-side, so the monitor can be seen both firing and not.
+  try {
+    const c = await getJSON("/reports/drift-comparison");
+    const host = el("p-shift-compare");
+    if (!host) return;
+    const col = (k) => {
+      const s = c[k] || {}, dr = s.drift || {}, comp = s.composition || {};
+      return "<td>" + (k === "pinned" ? "A normal day" : "The shifted day")
+        + '</td><td class="n">' + (dr.max_psi != null ? dr.max_psi.toFixed(3) : "—")
+        + '</td><td class="read ' + dr.overall_verdict + '">'
+        + (READING[dr.overall_verdict] || "—") + '</td><td class="n">'
+        + pct(comp.upi_share, 0) + '</td><td class="n">' + pct(comp.fraud_share, 0) + "</td>";
+    };
+    host.innerHTML = "<h4>The monitor, firing and not firing</h4>"
+      + '<table class="data"><thead><tr><th>Batch</th><th class="n">Worst reading</th>'
+        + '<th>Verdict</th><th class="n">UPI share</th><th class="n">Fraud share</th>'
+        + "</tr></thead><tbody><tr>" + col("pinned") + "</tr><tr>" + col("shifted")
+        + "</tr></tbody></table>"
+      + "<p>The second row is a batch built deliberately to shift, so the monitor "
+        + "can be shown catching something. Synthetic payments cannot drift on "
+        + "their own.</p>";
+  } catch (e) { /* the comparison is optional decoration, never load-bearing */ }
+}
+
+/* ================================================== 5. the retry storm === */
+function renderStorm(s) {
+  const b = s.before, a = s.after;
+  const row = (what, sub, bv, av, fmtv, delta, deltaGood) => {
+    const m = Math.max(bv, av, 1);
+    return '<div class="storm-row">'
+      + '<div class="what">' + what + (sub ? "<small>" + sub + "</small>" : "") + "</div>"
+      + '<div><div class="v b">' + fmtv(bv) + "</div>"
+        + '<div class="bar" style="width:' + (bv / m) * 100 + '%;background:var(--lost)"></div></div>'
+      + '<div><div class="v a">' + fmtv(av) + "</div>"
+        + '<div class="bar" style="width:' + (av / m) * 100 + '%;background:var(--recovered)"></div></div>'
+      + '<div class="delta' + (deltaGood ? " good" : "") + '">' + delta + "</div>"
+      + "</div>";
+  };
+  const plain = v => num(v);
+  const cut = Math.round((s.attempt_reduction || 0) * 100);
+
+  el("storm").innerHTML =
+    '<div class="storm-head"><div class="what">Retry behaviour</div>'
+      + '<div class="b">Before &mdash; no limit</div>'
+      + '<div class="a">After &mdash; three tries, backing off</div>'
+      + "<div></div></div>"
+    + row("Retry attempts", "against your customers' banks",
+          b.total_attempts, a.total_attempts, plain, "&minus;" + cut + "%", true)
+    + row("Attempts that were never going to work",
+          pct(b.wasted_attempt_share, 0) + " of them before, "
+            + pct(a.wasted_attempt_share, 0) + " after",
+          b.wasted_attempts, a.wasted_attempts, plain,
+          "&minus;" + Math.round((1 - a.wasted_attempts / (b.wasted_attempts || 1)) * 100) + "%", true)
+    + row("Worst single payment", "how many times one payment was retried",
+          b.attempts_per_txn_max, a.attempts_per_txn_max, v => num(v) + " tries", "", false)
+    + row("Still retrying when the day ended", "the uncapped loop never stops",
+          b.still_queued_at_end, a.still_queued_at_end, plain,
+          a.still_queued_at_end === 0 ? "it terminates" : "", true)
+    + row("Payments recovered", "the cost of the cap, stated plainly",
+          b.recovered, a.recovered, plain,
+          num(Math.abs(s.recovered_delta)) + " fewer", false);
+
+  const lostValue = (b.recovered_value || 0) - (a.recovered_value || 0);
+  el("storm-cost").innerHTML = '<div class="cost">'
+    + '<span class="h">What the cap costs you</span>'
+    + "Capping retries gives up <b>" + num(Math.abs(s.recovered_delta))
+    + "</b> recoveries, worth <b>" + inr(lostValue) + "</b>. Three attempts get back "
+    + "roughly 94% of everything recoverable. The uncapped loop reached the last 6% "
+    + "only by retrying forever &mdash; and "
+    + "<b>" + pct(b.wasted_attempt_share, 1) + "</b> of its attempts went to payments "
+    + "that could never have succeeded.</div>";
+
+  el("p-storm").innerHTML =
+    "<h4>The full simulation, both ways</h4>"
+    + '<table class="data"><thead><tr><th>Measure</th>'
+      + '<th class="n">' + esc(b.label) + '</th><th class="n">' + esc(a.label)
+      + "</th></tr></thead><tbody>"
+    + [["Polling cycles", b.cycles, a.cycles],
+       ["Payments queued", b.queued_transactions, a.queued_transactions],
+       ["Total attempts", b.total_attempts, a.total_attempts],
+       ["Attempts per payment, mean", b.attempts_per_txn_mean, a.attempts_per_txn_mean],
+       ["Attempts per payment, worst", b.attempts_per_txn_max, a.attempts_per_txn_max],
+       ["Wasted attempts", b.wasted_attempts, a.wasted_attempts],
+       ["Wasted share", pct(b.wasted_attempt_share), pct(a.wasted_attempt_share)],
+       ["Payments recovered", b.recovered, a.recovered],
+       ["Value recovered", inr(b.recovered_value), inr(a.recovered_value)],
+       ["Still queued at the end", b.still_queued_at_end, a.still_queued_at_end],
+       ["Ran out of retry budget", b.budget_exhausted, a.budget_exhausted],
+      ].map(r => "<tr><td>" + r[0] + '</td><td class="n">'
+        + (typeof r[1] === "number" ? num(r[1]) : r[1]) + '</td><td class="n">'
+        + (typeof r[2] === "number" ? num(r[2]) : r[2]) + "</td></tr>").join("")
+    + "</tbody></table>"
+    + "<p>The uncapped loop re-queued anything that had not succeeded on every "
+      + "polling cycle, so it concentrated its effort on the payments that could "
+      + "never succeed. The fix is a per-payment budget plus an exponential gap "
+      + "between attempts.</p>";
+  wireDisclosures();
+}
+
+async function loadStorm() {
+  try {
+    renderStorm(await getJSON("/reports/retry-storm"));
+  } catch (e) {
+    el("storm").innerHTML = '<div class="storm-row"><div class="what">'
+      + "The retry simulation has not been run yet. Run "
+      + '<span class="mono">python scripts/retry_storm_demo.py</span> and reload '
+      + "to see the before and after.</div></div>";
+    el("storm-cost").innerHTML = "";
+    const d = document.querySelector('[data-panel="p-storm"]');
+    if (d) d.hidden = true;
+  }
+}
+
+/* ================================================ 6. the decision ledger === */
+/* The range under the point estimate, drawn on 0..1 with a tick at the cutoff
+   this row's outcome actually turned on. Rows with no range (blocked as fraud,
+   or an older model artifact) simply render without one. */
+function intervalCell(d) {
+  const iv = d.recovery_interval;
+  if (!iv) return "";
+  const left = iv.lo * 100;
+  const w = Math.max((iv.hi - iv.lo) * 100, 1.5);
+  const high = THRESHOLDS.auto_retry_at;
+  const cut = (d.recovery_probability >= high || iv.hi >= high)
+    ? high * 100 : THRESHOLDS.give_up_below * 100;
+  const wide = d.uncertainty_adjusted ? " wide" : "";
+  return '<div class="iv" title="How much the model’s own runs disagreed about this payment">'
+    + '<div class="iv-track"><span class="iv-tick" style="left:' + cut + '%"></span>'
+    + '<span class="iv-span' + wide + '" style="left:' + left + "%;width:" + w + '%"></span></div>'
+    + '<div class="iv-num">' + pct(iv.lo, 0) + "–" + pct(iv.hi, 0) + "</div></div>";
+}
+
+/* The grounded meaning already opens with "05 (CARD): ", and the code is shown
+   in its own chip beside it. Strip the duplicate rather than printing it twice. */
+function codeMeaning(d) {
+  const m = d.error_code_meaning;
+  if (!m) return "No response was returned.";
+  return d.error_code ? m.replace(/^\s*\S+\s*\([A-Za-z]+\):\s*/, "") : m;
+}
+
+function hedgeNote(d) {
+  if (!d.uncertainty_adjusted) return "";
+  const iv = d.recovery_interval || { lo: 0, hi: 0 };
+  const range = pct(iv.lo, 0) + " to " + pct(iv.hi, 0);
+  const body = d.uncertainty_adjusted === "uncertain_at_auto_retry_threshold"
+    ? "<b>We were not sure enough to retry this immediately.</b>"
+      + "The odds looked good enough on their own (" + pct(d.recovery_probability, 0)
+      + "), but the model's own runs disagreed across the line (" + range
+      + "). So we queued it with a delay instead of firing straight away. Still "
+      + "recovering it, just not claiming confidence we do not have."
+    : "<b>We nearly wrote this off, and did not.</b>"
+      + "The odds alone said give up (" + pct(d.recovery_probability, 0)
+      + "), but the model's runs disagreed across the line (" + range
+      + "). Payments like this recover several times more often than confident "
+      + "write-offs, so it came to you instead of being dropped silently.";
+  return '<div class="hedge-note">' + body + "</div>";
+}
+
+function renderLedger() {
+  const fa = el("f-action").value, fc = el("f-cat").value;
+  ROWS = FEED.filter(d => (!fa || d.action === fa) && (!fc || d.predicted_category === fc));
+  el("f-clear").hidden = !(fa || fc);
+
+  el("ledger-count").innerHTML = "Showing <b>" + num(ROWS.length) + "</b> of the <b>"
+    + num(FEED_TOTAL) + "</b> payments in this batch"
+    + (FEED_TOTAL > FEED.length ? " (the " + num(FEED.length) + " most recent are listed)" : "");
+
+  if (!ROWS.length) {
+    el("ledger").innerHTML = '<tr><td colspan="6" class="empty">No payments match these '
+      + "filters. Clear them to see the whole batch.</td></tr>";
+    return;
+  }
+
+  el("ledger").innerHTML = ROWS.map((d, i) => {
+    const r = reasonOf(d.predicted_category);
+    const o = outcomeOf(d.action);
+    const probs = d.category_probabilities || {};
+    const conf = Object.keys(probs).length ? Math.max.apply(null, Object.keys(probs).map(k => probs[k])) : null;
+
+    const entry = '<tr class="entry' + (d.fraud_blocked ? " blocked" : "")
+      + '" data-i="' + i + '" tabindex="0" role="button" aria-expanded="false">'
+      + '<td class="mono">' + esc(d.transaction_id == null ? "—" : d.transaction_id) + "</td>"
+      + "<td>" + esc((d.payment_method || "").toUpperCase()) + "</td>"
+      + '<td class="num amount">' + inr(d.amount) + "</td>"
+      + '<td><span class="reason"><span class="dot" style="background:' + r.colour
+        + '"></span>' + r.short + "</span>"
+        + (conf != null ? '<span class="reason-conf">' + pct(conf, 0)
+            + " sure this is the reason</span>" : "") + "</td>"
+      + '<td class="num">' + (d.fraud_blocked
+          ? '<span class="notscored" title="Never computed for a payment blocked as fraud">not scored</span>'
+          : '<span class="odds">' + pct(d.recovery_probability, 0) + "</span>" + intervalCell(d))
+        + "</td>"
+      + '<td><span class="outcome' + (o.acts ? "" : " flat") + '" style="'
+        + (o.acts ? "background:" + o.colour : "color:" + o.colour + ";border-color:" + o.colour)
+        + '">' + o.short + "</span>"
+        + (d.uncertainty_adjusted ? '<span class="hedged">we hedged this one</span>' : "")
+        + "</td></tr>";
+
+    const detail = '<tr class="why" id="why-' + i + '" hidden><td colspan="6"><div class="why-in">'
+      + hedgeNote(d)
+      + "<div><h4>What happened</h4><p>"
+        + (d.explanation ? esc(d.explanation)
+            : '<span class="hint">No explanation was recorded for this payment.</span>')
+        + "</p></div>"
+      + "<div><h4>Straight from the bank</h4>"
+        + '<p class="code-fact">' + (d.error_code
+            ? '<span class="mono">' + esc(d.error_code) + "</span> &mdash; " : "")
+        + esc(codeMeaning(d)) + "</p></div>"
+      + "<div><h4>How sure we are about the reason</h4>"
+        + '<div class="confbars">' + Object.keys(probs)
+            .sort((x, y) => probs[y] - probs[x])
+            .map(k => '<div class="confbar"><span>' + reasonOf(k).short
+              + '</span><span class="t"><span style="width:' + (probs[k] * 100)
+              + "%;background:" + reasonOf(k).colour + '"></span></span>'
+              + '<span class="p">' + pct(probs[k], 0) + "</span></div>").join("")
+        + "</div></div>"
+      + (d.fraud_blocked
+          ? '<p class="hint">We blocked this as fraud. The recovery model and the '
+            + "language model were never called for it, so no recovery estimate "
+            + "exists to show.</p>"
+          : "<div><button class=\"btn\" data-live=\"" + i + "\">Ask the live model to explain this</button>"
+            + '<div class="hint" style="margin-top:8px">One API call, only when you click. '
+            + "Everything else on this page uses offline explanations built from the "
+            + "same bank response.</div>"
+            + '<div id="live-' + i + '" hidden></div></div>')
+      + "</div></td></tr>";
+
+    return entry + detail;
+  }).join("");
+
+  el("ledger").querySelectorAll("tr.entry").forEach(tr => {
+    const toggle = () => {
+      const panel = el("why-" + tr.dataset.i);
+      const open = panel.hidden;
+      panel.hidden = !open;
+      tr.classList.toggle("open", open);
+      tr.setAttribute("aria-expanded", String(open));
+    };
+    tr.addEventListener("click", toggle);
+    tr.addEventListener("keydown", ev => {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); }
     });
   });
-  $("#feed").querySelectorAll("[data-live]").forEach(btn => {
-    btn.addEventListener("click", e => { e.stopPropagation(); explainLive(btn, rows[+btn.dataset.live]); });
+  el("ledger").querySelectorAll("[data-live]").forEach(btn => {
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      explainLive(btn, ROWS[+btn.dataset.live]);
+    });
   });
 }
 
-// The one place the dashboard may spend live provider quota, and only when a
-// human clicks. Everything else is served from offline templates.
+/* The one place this page may spend live provider quota, and only when a human
+   clicks. Everything else is served from offline explanations. */
 async function explainLive(btn, d) {
-  const out = $("#live-" + btn.dataset.live);
+  const out = el("live-" + btn.dataset.live);
   out.hidden = false;
   out.className = "live-out";
-  out.textContent = "Asking Gemini…";
+  out.textContent = "Asking the model…";
   btn.disabled = true;
   try {
     const src = FEATURES[d.transaction_id];
-    if (!src) throw new Error("feature data unavailable - re-run the simulation");
+    if (!src) throw new Error("this payment's details are no longer loaded — run the batch again");
     const payload = {};
-    for (const k of ["transaction_id", "amount", "payment_method", "time_of_day",
+    const fields = ["transaction_id", "amount", "payment_method", "time_of_day",
       "day_of_week", "retry_count", "customer_txn_history_count",
       "customer_past_failure_rate", "seconds_to_failure", "merchant_category",
       "error_code", "card_network", "issuing_bank", "is_3ds_flow",
       "card_age_months", "psp_app", "time_since_app_switch",
-      "daily_limit_utilization"]) {
+      "daily_limit_utilization"];
+    for (const k of fields) {
       if (src[k] !== undefined && src[k] !== null) payload[k] = src[k];
     }
     const res = await getJSON("/decide", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    // The adapter degrades to a grounded template when the free-tier quota is
-    // spent, and marks that inline. Showing the raw marker under a heading that
-    // says "live response" reads as broken to anyone who doesn't know the
-    // backstory -- so label it plainly instead of leaking the diagnostic.
-    // Honest, not hidden: it says the model was unavailable, and says why it
-    // doesn't matter.
+    // The adapter quietly falls back to a grounded explanation when the free
+    // quota is spent. Saying so plainly beats leaking the raw marker under a
+    // heading that claims a live response.
     const fellBack = /used template\)\s*$/.test(res.explanation);
-    const prose = res.explanation.replace(/\s*\([^)]*used template\)\s*$/, "");
-    out.innerHTML = fellBack
-      ? `<div class="muted" style="font-size:11.5px;margin-bottom:5px">
-           grounded explanation &middot; live model unavailable (free-tier quota)
-           &mdash; the decision is unchanged</div>${prose}`
-      : `<div class="muted" style="font-size:11.5px;margin-bottom:5px">
-           live response</div>${prose}`;
+    const prose = esc(res.explanation.replace(/\s*\([^)]*used template\)\s*$/, ""));
+    out.innerHTML = '<div class="live-tag">'
+      + (fellBack
+          ? "Written from the bank's response. The live model was unavailable "
+            + "(free quota spent) — the decision itself is unchanged."
+          : "Live response")
+      + "</div>" + prose;
   } catch (err) {
-    out.innerHTML = `<span class="err">Live call failed: ${err.message}.</span>
-      <span class="muted">The grounded template above still stands — explanations
-      are narration, decisions are not.</span>`;
+    out.innerHTML = '<div class="live-tag bad">Could not reach the live model.</div>'
+      + esc(err.message) + ". The explanation above still stands — it is written "
+      + "from the same bank response. Explanations narrate decisions; they never "
+      + "make them.";
   } finally {
     btn.disabled = false;
   }
 }
 
 function fillFilters() {
-  const acts = [...new Set(FEED.map(d => d.action))].sort(
-    (a, b) => ACT_ORDER.indexOf(a) - ACT_ORDER.indexOf(b));
-  const cats = [...new Set(FEED.map(d => d.predicted_category))].sort(
-    (a, b) => CAT_ORDER.indexOf(a) - CAT_ORDER.indexOf(b));
-  $("#f-action").innerHTML = `<option value="">All actions</option>` +
-    acts.map(a => `<option value="${a}">${titled(a)}</option>`).join("");
-  $("#f-cat").innerHTML = `<option value="">All categories</option>` +
-    cats.map(c => `<option value="${c}">${titled(c)}</option>`).join("");
+  const acts = Array.from(new Set(FEED.map(d => d.action)))
+    .sort((a, b) => OUTCOME_ORDER.indexOf(a) - OUTCOME_ORDER.indexOf(b));
+  const cats = Array.from(new Set(FEED.map(d => d.predicted_category)))
+    .sort((a, b) => REASON_ORDER.indexOf(a) - REASON_ORDER.indexOf(b));
+  const keepA = el("f-action").value, keepC = el("f-cat").value;
+  el("f-action").innerHTML = '<option value="">All outcomes</option>'
+    + acts.map(a => '<option value="' + a + '">' + outcomeOf(a).name + "</option>").join("");
+  el("f-cat").innerHTML = '<option value="">All reasons</option>'
+    + cats.map(c => '<option value="' + c + '">' + reasonOf(c).name + "</option>").join("");
+  if (acts.indexOf(keepA) > -1) el("f-action").value = keepA;
+  if (cats.indexOf(keepC) > -1) el("f-cat").value = keepC;
 }
 
-// ------------------------------------------------------------------ load ---
+/* ============================================ 7. how this works (once) === */
+async function loadHealth() {
+  try {
+    const h = await getJSON("/health");
+    if (h.thresholds) THRESHOLDS = h.thresholds;
+    const llm = h.llm || {};
+    el("llm-note").innerHTML =
+      "<p>Every explanation on this page is written from the bank's actual decline "
+      + "code and its verified meaning. A language model narrates that; it never "
+      + "decides anything.</p>"
+      + kvRows([
+          ["Explanations here", llm.live ? "written offline, to protect the quota" : "written offline", true],
+          ["Live model available", llm.live ? esc(llm.provider || "yes") : "not configured", true],
+          ["Model", esc(llm.model || "none"), true],
+        ])
+      + "<p>" + (llm.note ? esc(llm.note)
+          : "Selecting a payment and asking for a live explanation is the only "
+            + "thing on this page that calls it, one payment at a time.") + "</p>";
+  } catch (e) {
+    el("llm-note").innerHTML = "<p>Could not read the service status. The numbers "
+      + "above still come from the API.</p>";
+  }
+}
+
+async function loadQuality() {
+  try {
+    const m = await getJSON("/reports/metrics");
+    const m1 = m.model_1_failure_classifier || {};
+    const m2 = m.model_2_recovery_success || {};
+    const ds = m.dataset || {};
+    const lookupAcc = (m1.baseline_error_code_lookup || {}).accuracy;
+
+    el("quality").innerHTML =
+      "<p>On payments it had never seen, it worked out the right reason "
+      + "<strong>" + Math.round((m1.accuracy || 0) * 100) + " times out of 100</strong>. "
+      + "Reading the decline code alone gets you "
+      + Math.round((lookupAcc || 0) * 100) + " out of 100, so the models are "
+      + "earning their place rather than repeating the bank.</p>";
+
+    const imp = m1.feature_importances || {};
+    const top = Object.keys(imp).sort((a, b) => imp[b] - imp[a]).slice(0, 6);
+    el("p-quality").innerHTML =
+      "<h4>Working out why a payment failed</h4>"
+      + kvRows([
+          ["Accuracy", pct(m1.accuracy)],
+          ["Macro F1", (m1.macro_f1 || 0).toFixed(3)],
+          ["Decline-code lookup alone, accuracy", pct(lookupAcc)],
+          ["Lift over that baseline", pct((m1.lift_over_baseline || {}).accuracy)],
+          ["Fraud recall", pct(((m1.per_class || {}).fraud_block || {}).recall)],
+        ])
+      + "<h4>Estimating whether recovery would work</h4>"
+      + kvRows([
+          ["ROC AUC", (m2.roc_auc || 0).toFixed(3)],
+          ["PR AUC", (m2.pr_auc || 0).toFixed(3)],
+          ["Brier score, calibrated", (m2.brier_calibrated || 0).toFixed(4)],
+          ["Brier score, before calibration", (m2.brier_uncalibrated || 0).toFixed(4)],
+          ["Payments scored", num(m2.n_test)],
+        ])
+      + "<p>Calibration matters more than raw accuracy here: the thresholds are "
+        + "read off the score itself, so a score of 0.6 has to mean roughly a 60% "
+        + "chance in practice.</p>"
+      + "<h4>What the diagnosis leans on most</h4>"
+      + '<table class="data"><thead><tr><th>Input</th><th class="n">Weight</th>'
+        + "</tr></thead><tbody>"
+      + top.map(k => "<tr><td>" + esc(k.replace(/_/g, " ")) + '</td><td class="n">'
+          + pct(imp[k]) + "</td></tr>").join("")
+      + "</tbody></table>"
+      + kvRows([
+          ["Payments learned from", num(ds.train_rows)],
+          ["Payments held back for testing", num(ds.test_rows)],
+        ]);
+    wireDisclosures();
+  } catch (e) {
+    el("quality").innerHTML = "<p>Measured results have not been generated yet. Run "
+      + '<span class="mono">python scripts/train.py</span> to produce them.</p>';
+    const d = document.querySelector('[data-panel="p-quality"]');
+    if (d) d.hidden = true;
+  }
+}
+
+/* ================================================================ run === */
+function setProvenance(html) { el("provenance").innerHTML = html; }
+
 async function run() {
-  const choice = $("#batch").value;
+  const choice = el("batch").value;
   const constructed = choice === "drift";
   const pinned = choice === "demo" || constructed;
-  const btn = $("#run");
+  const btn = el("run");
   btn.disabled = true;
-  $("#status").textContent = pinned
-    ? "Loading pinned demo batch…" : `Running ${choice} transactions…`;
+  setProvenance('<span class="stamp">Working through the payments…</span>');
 
   try {
-    // seed first: it populates the audit feed the decision table reads.
-    // The pinned batch is committed data, so the numbers match the script every
-    // time; the random options re-sample on each click.
+    // Seed first: it populates the audit trail the ledger reads, and stores the
+    // batch so every band below describes the same payments.
     const seeded = constructed
-      ? await getJSON(`/simulate/drift-demo`, { method: "POST" })
+      ? await getJSON("/simulate/drift-demo", { method: "POST" })
       : pinned
-        ? await getJSON(`/simulate/demo`, { method: "POST" })
-        : await getJSON(`/simulate/seed?n=${choice}`, { method: "POST" });
+        ? await getJSON("/simulate/demo", { method: "POST" })
+        : await getJSON("/simulate/seed?n=" + encodeURIComponent(choice), { method: "POST" });
+
     const n = seeded.count;
+    ALL = seeded.decisions || [];
     FEATURES = {};
-    for (const row of seeded.decisions || []) FEATURES[row.transaction_id] = row;
-    const [rev, brk, feed] = await Promise.all([
-      getJSON(`/stats/recovered-revenue?n=${n}`),
-      getJSON(`/stats/breakdown?n=${n}`),
-      getJSON(`/decisions?limit=${FEED_LIMIT}`),
+    for (const row of ALL) FEATURES[row.transaction_id] = row;
+
+    const results = await Promise.all([
+      getJSON("/stats/recovered-revenue?n=" + n),
+      getJSON("/stats/breakdown?n=" + n),
+      getJSON("/decisions?limit=" + FEED_LIMIT),
     ]);
-    renderHeadline(rev);
-    loadDrift(constructed);          // read-only; failure here must not break the page
-    renderBreakdown(brk);
-    renderActions(brk);
+    const rev = results[0], brk = results[1], feed = results[2];
+
+    renderVerdict(rev);
+    renderAttention();
+    loadShift(constructed);      // read-only; a failure here must not break the page
+    renderReasons(brk);
+    renderOutcomes(brk);
+
     FEED = feed.decisions || [];
     FEED_TOTAL = feed.total || FEED.length;
     fillFilters();
-    renderFeed();
-    // Surface that this was a fresh draw -- the batch used to be a fixed slice,
-    // so "did that actually re-run?" is a fair question to answer in the UI.
-    const ids = FEED.map(d => d.transaction_id);
-    $("#status").innerHTML = constructed
-      ? `${n} transactions &middot; <span class="warn">constructed drift
-         scenario</span>`
-      : pinned
-      ? `${n} transactions &middot; <span class="muted">pinned demo batch —
-         reproducible</span>`
-      : `${n} transactions &middot; <span class="mono">${ids[0] ?? "—"}</span> …
-         <span class="muted">new random sample</span>`;
+    renderLedger();
+
+    const ids = ALL.map(d => d.transaction_id);
+    setProvenance(
+      '<span class="count">' + num(n) + " payments</span>"
+      + (constructed
+          ? '<span class="stamp built">Patterns shifted deliberately, for '
+            + "demonstration &mdash; not traffic anyone observed</span>"
+          : pinned
+            ? '<span class="stamp pinned">Pinned batch &mdash; the same numbers on '
+              + "every run</span>"
+            : '<span class="stamp fresh">Fresh sample, drawn just now</span>'
+              + '<span class="stamp">starting at <span class="mono">'
+              + esc(ids[0] == null ? "—" : ids[0]) + "</span></span>"));
   } catch (err) {
-    $("#status").innerHTML = `<span class="err">${err.message}</span>`;
+    setProvenance('<span class="stamp bad">' + esc(err.message)
+      + "</span><span>The service may still be starting up. Try running the batch again.</span>");
   } finally {
     btn.disabled = false;
   }
 }
 
-async function loadStorm() {
-  try {
-    renderStorm(await getJSON("/reports/retry-storm"));
-  } catch {
-    $("#storm-verdict").innerHTML =
-      `<span class="muted">No retry-storm report yet. Run
-       <span class="mono">python scripts/retry_storm_demo.py</span> and reload.</span>`;
-  }
-}
+el("run").addEventListener("click", run);
+el("batch").addEventListener("change", run);
+el("f-action").addEventListener("change", renderLedger);
+el("f-cat").addEventListener("change", renderLedger);
+el("f-clear").addEventListener("click", () => {
+  el("f-action").value = ""; el("f-cat").value = ""; renderLedger();
+});
 
-$("#run").addEventListener("click", run);
-$("#f-action").addEventListener("change", renderFeed);
-$("#f-cat").addEventListener("change", renderFeed);
+wireDisclosures();
+// Thresholds first: the ledger draws its cutoff tick from them.
+loadHealth().then(run);
 loadStorm();
-run();
+loadQuality();
 </script>
 </body>
 </html>

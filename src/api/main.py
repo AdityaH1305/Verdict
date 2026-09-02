@@ -41,6 +41,7 @@ DEMO_BATCH_CSV = os.path.join(ROOT, "data", "demo", "demo_batch.csv")
 # Its drift was introduced deliberately; it is not observed traffic.
 DRIFT_DEMO_CSV = os.path.join(ROOT, "data", "demo", "drift_demo_batch.csv")
 DRIFT_COMPARISON_REPORT = os.path.join(REPORTS_DIR, "drift_comparison.json")
+METRICS_REPORT = os.path.join(REPORTS_DIR, "metrics.json")
 
 STATE: Dict[str, Any] = {"agent": None, "bulk_agent": None, "error": None}
 
@@ -505,6 +506,27 @@ def retry_storm_report():
             detail="No retry-storm report yet. Run: python scripts/retry_storm_demo.py",
         )
     with open(RETRY_STORM_REPORT) as f:
+        return json.load(f)
+
+
+@app.get("/reports/metrics")
+def metrics_report():
+    """
+    Serve the training/evaluation metrics written by scripts/train.py.
+
+    A static passthrough, exactly like /reports/retry-storm: the browser cannot
+    read a local file, and the dashboard's "how this works" panel should quote
+    the measured numbers rather than carry a hard-coded copy that silently goes
+    stale the next time the models are retrained.
+
+    Read-only. Reads no model, calls no agent, and cannot affect a decision.
+    """
+    if not os.path.exists(METRICS_REPORT):
+        raise HTTPException(
+            status_code=404,
+            detail="No metrics report yet. Run: python scripts/train.py",
+        )
+    with open(METRICS_REPORT) as f:
         return json.load(f)
 
 

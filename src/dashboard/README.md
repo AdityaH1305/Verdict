@@ -22,18 +22,54 @@ The brief asked for the approach fastest to build and simplest to run locally:
 
 Node 24 is available if this ever outgrows a single file — but it hasn't.
 
+## Design
+
+"Settlement" — the page is laid out as a ledger sheet rather than a grid of cards.
+Elevation is spent exactly once, on the settlement summary at the top; every band
+below it is flat on paper, separated by hairline rules. Merchant language leads and
+the model layer sits behind explicit "show the numbers" disclosures, so a shop owner
+can read the page end to end without meeting the word *calibration*, and an engineer
+can still reach every figure the API returns.
+
+Palette: cool paper `#F5F6F9` with an indigo accent `#2B3F8C`. Green `#0F7A5A` is
+money recovered, amber `#A96400` means a human has to act, and fraud-blocked is plum
+`#6B3E86` rather than red — a blocked fraud attempt is the system working, not
+failing. Both themes are token swaps; the toggle persists to `localStorage` and the
+un-stamped system-dark case is handled too.
+
+Type is three system stacks, not a web font. That is forced by
+`test_dashboard_html_has_no_external_dependencies`, which fails the build on any
+`https://` in the file — including the `xmlns` attribute on an inline `<svg>`, which
+is why there isn't one. The numerals carry the display weight (tabular figures
+throughout); Georgia appears once per band at most, for the single plain-language
+sentence that says what the numbers mean.
+
 ## Sections
 
 | Section | Source |
 |---|---|
-| Recovered revenue (headline) | `GET /stats/recovered-revenue` |
-| Failure categories, split card vs UPI | `GET /stats/breakdown` → `category_by_method` |
-| Action mix | `GET /stats/breakdown` → `by_action` |
-| Retry storm before/after | `GET /reports/retry-storm` |
-| Live decision feed + expandable "why" | `POST /simulate/seed` then `GET /decisions` |
-| Uncertainty interval per row | `recovery_interval` on each decision |
+| The verdict (headline recovered revenue, where the failed money went) | `GET /stats/recovered-revenue` |
+| What needs you (escalations, pattern shift, fraud blocks) | the batch response, plus `GET /stats/drift` |
+| Pattern-shift detail, and the monitor firing vs not firing | `GET /stats/drift`, `GET /reports/drift-comparison` |
+| Why the payments failed, split card vs UPI | `GET /stats/breakdown` → `category_by_method`, `by_payment_method` |
+| What we did about it | `GET /stats/breakdown` → `by_action`, cutoffs from `GET /health` |
+| We stopped hammering the banks (retry storm) | `GET /reports/retry-storm` |
+| Every decision, on the record (the ledger) | `POST /simulate/*` then `GET /decisions` |
+| Uncertainty range per row | `recovery_interval` on each decision |
+| How this works (architecture, fraud guarantee, measured quality) | `GET /reports/metrics`, `GET /health` |
 
 The page computes no decisions of its own — every number comes from the backend.
+Where it sums or divides (the escalated value in "what needs you", the card-vs-UPI
+skew), it is summing fields the backend already returned for that same batch.
+
+## Progressive disclosure
+
+Every band ends with one consistent affordance — a text button that opens a ruled
+panel holding the technical layer for that band: the predicted-vs-realised revenue
+comparison, the PSI table with its threshold scale, the model class names beside
+their merchant labels, the 0.50 / 0.25 cutoffs and the hedging rule, the full
+retry simulation, and the measured model metrics. Nothing was removed from the old
+page; the model vocabulary moved one click deeper.
 
 ## Quota safety
 
@@ -42,8 +78,8 @@ over transactions is served by the API's bulk agent, which is pinned to the
 offline `TemplateAdapter`; explanations are still grounded in the real error-code
 taxonomy, just generated deterministically.
 
-The single exception is the **"Explain live with Gemini"** button inside an
-expanded row, which posts that one transaction to `POST /decide`. It is opt-in,
+The single exception is the **"Ask the live model to explain this"** button inside
+an expanded ledger entry, which posts that one transaction to `POST /decide`. It is opt-in,
 one call per click, and absent entirely on fraud-blocked rows — those never reach
 a language model at all.
 
@@ -72,7 +108,7 @@ always describes the rows underneath it.
   needs those inputs, so the feature columns from the `/simulate/seed` response
   are joined by `transaction_id` client-side rather than widening the audit
   record with fields no auditor would want.
-- The feed renders the most recent 60 decisions. The stats panels already
+- The ledger renders the most recent 60 decisions. The stats panels already
   summarise the whole batch; rendering ~1,000 rows produced a 20,000px page.
 - Fraud-blocked rows show "not scored" rather than a probability, because none is
   ever computed for them. That makes the architectural hard rule visible in the

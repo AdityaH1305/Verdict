@@ -77,6 +77,8 @@ STABLE = [
      "the constructed drift scenario -- a committed batch, so repeatable like the pinned one"),
     ("GET", "/reports/drift-comparison",
      "a committed report, not a live computation"),
+    ("GET", "/reports/metrics",
+     "the committed training/evaluation report, not a live computation"),
 ]
 
 # Endpoints whose variability is governed by another endpoint, so testing them

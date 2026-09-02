@@ -174,7 +174,9 @@ class TestDashboardRoutes:
         r = client.get("/")
         assert r.status_code == 200
         assert "Verdict" in r.text
-        assert "Live decision feed" in r.text
+        # The decision feed's heading. Merchant-facing wording -- the section
+        # itself is unchanged, only what it is called on screen.
+        assert "Every decision, on the record" in r.text
 
     def test_retry_storm_report_is_served(self, client):
         r = client.get("/reports/retry-storm")
@@ -192,6 +194,24 @@ class TestDashboardRoutes:
 
         assert r.status_code == 404
         assert "retry_storm_demo" in r.json()["detail"]
+
+    def test_metrics_report_is_served(self, client):
+        """The "how this works" panel quotes these rather than hard-coding them."""
+        r = client.get("/reports/metrics")
+        if r.status_code == 404:
+            pytest.skip("run scripts/train.py first")
+
+        body = r.json()
+        assert "model_1_failure_classifier" in body
+        assert "model_2_recovery_success" in body
+        assert 0.0 < body["model_1_failure_classifier"]["accuracy"] <= 1.0
+
+    def test_metrics_404s_cleanly_when_missing(self, client, monkeypatch):
+        monkeypatch.setattr(api_main, "METRICS_REPORT", "/nonexistent/metrics.json")
+        r = client.get("/reports/metrics")
+
+        assert r.status_code == 404
+        assert "train.py" in r.json()["detail"]
 
     def test_breakdown_exposes_the_card_vs_upi_split(self, client):
         """The dashboard's skew chart depends on this shape existing."""
