@@ -168,6 +168,50 @@ a { color: var(--indigo); }
 
 .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
+/* ---------------------------------------------------------- batch picker --- */
+/* Two tiers, because the choices are not peers: two curated scenarios someone
+   would deliberately pick between, and a quieter escape hatch for drawing a
+   random sample. Ruled cells sharing an edge, like every other group here. */
+.picker { border-bottom: 1px solid var(--rule); background: var(--sheet); }
+.picker-in {
+  max-width: 1120px; margin: 0 auto; padding: 13px 24px;
+  display: flex; align-items: center; gap: 12px 18px; flex-wrap: wrap;
+}
+.scenarios {
+  display: flex; border: 1px solid var(--rule-strong);
+  border-radius: 8px; overflow: hidden;
+}
+.scenario {
+  font: inherit; text-align: left; cursor: pointer;
+  background: var(--sheet); color: var(--ink);
+  border: 0; border-right: 1px solid var(--rule-strong);
+  padding: 9px 18px; display: flex; flex-direction: column; gap: 2px;
+}
+.scenarios .scenario:last-child { border-right: 0; }
+.scenario .s-name { font-size: 13.5px; font-weight: 600; letter-spacing: -.008em; }
+.scenario .s-sub { font-size: 11.5px; color: var(--ink-soft); }
+.scenario:hover:not(:disabled) { background: var(--sunk); }
+.scenario.is-on { background: var(--indigo); color: var(--indigo-ink); }
+.scenario.is-on .s-sub { color: var(--indigo-ink); opacity: .74; }
+.scenario:disabled { opacity: .45; cursor: default; }
+
+/* Deliberately demoted: smaller type, no fill, pushed to the end of the row. */
+.sampler { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.sampler-label { font-size: 12px; color: var(--ink-soft); }
+.sizes { display: flex; gap: 4px; }
+.size {
+  font: inherit; font-family: var(--figure); font-size: 12px;
+  font-variant-numeric: tabular-nums; cursor: pointer;
+  background: transparent; color: var(--ink-mid);
+  border: 1px solid var(--rule); border-radius: 5px; padding: 4px 9px;
+}
+.size:hover:not(:disabled) { border-color: var(--indigo); color: var(--ink); }
+.size.is-on {
+  border-color: var(--indigo); background: var(--indigo-soft);
+  color: var(--indigo); font-weight: 600;
+}
+.size:disabled { opacity: .45; cursor: default; }
+
 select, .btn {
   font: inherit; font-size: 13px;
   background: var(--sheet); color: var(--ink);
@@ -535,7 +579,19 @@ table.data .read.HIGH { color: var(--lost); }
   /* The auto-fit track floors were wider than a phone, which pushed the whole
      page sideways. Two even columns instead. */
   .verdict-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 16px; }
-  .masthead-in, .provenance, .sheetwrap { padding-left: 16px; padding-right: 16px; }
+  .masthead-in, .provenance, .sheetwrap, .picker-in {
+    padding-left: 16px; padding-right: 16px;
+  }
+  /* Brand and the theme toggle share one row; the tagline stacks beneath the
+     name rather than pushing the toggle onto a line of its own. */
+  .masthead-in { flex-wrap: nowrap; align-items: flex-start; }
+  .brand { flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+  /* Side by side, these two labels wrap to three lines each on a phone. */
+  .scenarios { flex-direction: column; width: 100%; }
+  .scenario { border-right: 0; border-bottom: 1px solid var(--rule-strong); }
+  .scenarios .scenario:last-child { border-bottom: 0; }
+  #run { width: 100%; padding-top: 9px; padding-bottom: 9px; }
+  .sampler { margin-left: 0; width: 100%; flex-wrap: wrap; gap: 8px 10px; }
   .sub-fig .v { font-size: 19px; }
   .barrow { grid-template-columns: 1fr; }
   .barrow .tally { text-align: left; }
@@ -559,20 +615,35 @@ table.data .read.HIGH { color: var(--lost); }
       <span class="tag">Failed payments, diagnosed and recovered</span>
     </div>
     <div class="controls">
-      <label class="band-note" for="batch">Looking at</label>
-      <select id="batch">
-        <option value="demo" selected>Today's batch</option>
-        <option value="drift">A day when patterns shifted</option>
-        <option value="100">Sample 100 payments</option>
-        <option value="300">Sample 300 payments</option>
-        <option value="500">Sample 500 payments</option>
-        <option value="1000">Sample 1,000 payments</option>
-      </select>
-      <button class="btn primary" id="run">Run</button>
       <button class="btn ghost" id="theme" aria-label="Switch colour theme">Dark</button>
     </div>
   </div>
 </header>
+
+<div class="picker">
+  <div class="picker-in">
+    <div class="scenarios" role="group" aria-label="Which payments to look at">
+      <button type="button" class="scenario is-on" data-batch="demo" aria-pressed="true">
+        <span class="s-name">Today's batch</span>
+        <span class="s-sub">Pinned, so the numbers repeat</span>
+      </button>
+      <button type="button" class="scenario" data-batch="drift" aria-pressed="false">
+        <span class="s-name">A day when patterns shifted</span>
+        <span class="s-sub">A deliberately constructed shift</span>
+      </button>
+    </div>
+    <button class="btn primary" id="run">Run</button>
+    <div class="sampler">
+      <span class="sampler-label" id="sampler-label">Or try a random sample</span>
+      <div class="sizes" role="group" aria-labelledby="sampler-label">
+        <button type="button" class="size" data-batch="100">100</button>
+        <button type="button" class="size" data-batch="300">300</button>
+        <button type="button" class="size" data-batch="500">500</button>
+        <button type="button" class="size" data-batch="1000">1,000</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="provenance" id="provenance"></div>
 
@@ -818,6 +889,12 @@ let FEED = [];       // the most recent slice, rendered as the ledger
 let FEED_TOTAL = 0;
 let FEATURES = {};   // model inputs by transaction_id, needed by POST /decide
 let ROWS = [];       // the currently filtered ledger rows
+/* Which batch the picker is on. Was the value of a <select>; now it is held
+   here, because the two curated scenarios and the random sizes are no longer
+   peers in one list. The values are unchanged, so run() routes exactly as
+   before: "demo" and "drift" hit the pinned endpoints, anything else is the
+   sample size passed to /simulate/seed. */
+let CHOICE = "demo";
 let THRESHOLDS = { auto_retry_at: 0.5, give_up_below: 0.25 };
 
 /* The stats bands already summarise the whole batch. The ledger is for reading
@@ -1586,11 +1663,11 @@ async function loadQuality() {
 function setProvenance(html) { el("provenance").innerHTML = html; }
 
 async function run() {
-  const choice = el("batch").value;
+  const choice = CHOICE;
   const constructed = choice === "drift";
   const pinned = choice === "demo" || constructed;
   const btn = el("run");
-  btn.disabled = true;
+  setPickerEnabled(false);
   setProvenance('<span class="stamp">Working through the payments…</span>');
 
   try {
@@ -1641,12 +1718,40 @@ async function run() {
     setProvenance('<span class="stamp bad">' + esc(err.message)
       + "</span><span>The service may still be starting up. Try running the batch again.</span>");
   } finally {
-    btn.disabled = false;
+    setPickerEnabled(true);
   }
 }
 
+/* One disabled state for the whole picker. The old single dropdown disabled
+   only the Run button; with the choices now spread across seven controls,
+   leaving six of them live during a load would let a second batch start on
+   top of the first. */
+function setPickerEnabled(on) {
+  el("run").disabled = !on;
+  document.querySelectorAll(".scenario, .size").forEach(b => { b.disabled = !on; });
+}
+
+/* Picking a batch runs it -- that is what a labelled button promises. Run
+   re-runs whatever is selected, which is what draws a fresh random sample. */
+function choose(value) {
+  CHOICE = value;
+  document.querySelectorAll(".scenario").forEach(b => {
+    const on = b.dataset.batch === value;
+    b.classList.toggle("is-on", on);
+    b.setAttribute("aria-pressed", String(on));
+  });
+  document.querySelectorAll(".size").forEach(b => {
+    const on = b.dataset.batch === value;
+    b.classList.toggle("is-on", on);
+    b.setAttribute("aria-pressed", String(on));
+  });
+  run();
+}
+
+document.querySelectorAll(".scenario, .size").forEach(b => {
+  b.addEventListener("click", () => choose(b.dataset.batch));
+});
 el("run").addEventListener("click", run);
-el("batch").addEventListener("change", run);
 el("f-action").addEventListener("change", renderLedger);
 el("f-cat").addEventListener("change", renderLedger);
 el("f-clear").addEventListener("click", () => {
