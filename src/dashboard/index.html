@@ -715,6 +715,16 @@ table.data .read.HIGH { color: var(--lost); }
   .confbar { grid-template-columns: 120px 1fr 44px; }
 }
 
+/* A band still waiting on its request reads as a placeholder rather than an
+   empty gap. Deliberately static -- the page's one animation is the money flow,
+   and a shimmer here would be motion nobody asked for. */
+.waiting { color: transparent !important; position: relative; }
+.waiting::after {
+  content: ""; position: absolute; inset: 0;
+  background: var(--rule); border-radius: 6px; opacity: .5;
+}
+#reasons.waiting, #ledger.waiting { display: block; min-height: 120px; }
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
@@ -1220,7 +1230,17 @@ function ribbonPath(x0, y0, x1, y1, h) {
 }
 
 /* ---------------------------------------------------------------- drawing --- */
-function drawFlow(f) {
+/* The ribbons and nodes the flow is currently showing. Handlers read tooltips
+   from here rather than from a closure, so a patched frame can update them
+   without the listeners being torn down and rebuilt. */
+let FLOW_VIEW = { ribbons: [], nodes: [] };
+
+/* Geometry and copy for one set of values.
+
+   `withTips` is false on tween frames: the tooltip sentences are pure string
+   building that nothing can read mid-animation, and skipping them takes real
+   work out of a 60fps loop. */
+function computeFlowView(f, withTips) {
   const L = layoutFlow(f);
   const unit = f.total > 0
     ? (FLOW_BOTTOM - FLOW_TOP - (FLOW_ACTIONS.length - 1) * FLOW_GAP) / f.total : 0;
@@ -1310,6 +1330,13 @@ function drawFlow(f) {
       null);
   }
 
+  return { ribbons: ribbons, nodes: nodes };
+}
+
+function drawFlow(f) {
+  const view = computeFlowView(f, true);
+  const ribbons = view.ribbons, nodes = view.nodes;
+
   const heads = ["Failed", "Why it failed", "What we did", "Where it ended up"]
     .map((t, i) => '<text class="colhead" x="' + COL_X[i] + '" y="34">' + t + "</text>")
     .join("");
@@ -1343,10 +1370,56 @@ function drawFlow(f) {
   const first = !wrap.querySelector("svg");
   wrap.innerHTML = svg + '<div class="flow-tip" id="flow-tip" hidden></div>';
   if (first) wrap.querySelector("svg").classList.add("reveal");
-  wireFlow(wrap.querySelector("svg"), ribbons, nodes);
+  FLOW_VIEW = view;
+  wireFlow(wrap.querySelector("svg"));
 }
 
-function wireFlow(svg, ribbons, nodes) {
+/* Rewrite geometry in place. A tween used to call drawFlow every frame, which
+   rebuilt the whole diagram through innerHTML and re-attached every listener --
+   roughly forty rebuilds and a couple of thousand listener attachments across
+   one 700ms transition. The node and ribbon set is normally identical between
+   two batches, so almost every frame can just move what is already there.
+   Anything that does not line up falls back to a full rebuild. */
+function patchFlow(f, fast) {
+  const svg = el("flow-wrap").querySelector("svg");
+  if (!svg) return drawFlow(f);
+
+  const view = computeFlowView(f, !fast);
+  const paths = svg.querySelectorAll(".ribbon");
+  const groups = svg.querySelectorAll(".node");
+  if (paths.length !== view.ribbons.length || groups.length !== view.nodes.length) {
+    return drawFlow(f);
+  }
+
+  for (let i = 0; i < paths.length; i++) {
+    const rb = view.ribbons[i];
+    if (paths[i].dataset.from !== rb.from || paths[i].dataset.to !== rb.to) {
+      return drawFlow(f);
+    }
+    paths[i].setAttribute("d", rb.d);
+  }
+
+  for (let i = 0; i < groups.length; i++) {
+    const nd = view.nodes[i];
+    const g = groups[i];
+    if (g.dataset.key !== nd.key) return drawFlow(f);
+    const rect = g.querySelector("rect");
+    const lab = g.querySelector(".lab");
+    const amt = g.querySelector(".amt-t");
+    const mid = nd.box.y + nd.box.h / 2;
+    rect.setAttribute("y", nd.box.y);
+    rect.setAttribute("height", Math.max(nd.box.h, 1));
+    lab.setAttribute("y", mid - 2);
+    amt.setAttribute("y", mid + 14);
+    if (!fast) {
+      amt.textContent = inr(nd.box.v);
+      g.setAttribute("aria-label", nd.label + ", " + inr(nd.box.v));
+    }
+  }
+  FLOW_VIEW = view;
+}
+
+function wireFlow(svg) {
   const tip = el("flow-tip"), wrap = el("flow-wrap");
   const paths = svg.querySelectorAll(".ribbon");
   const groups = svg.querySelectorAll(".node");
@@ -1370,8 +1443,8 @@ function wireFlow(svg, ribbons, nodes) {
   };
 
   paths.forEach(pth => {
-    const rb = ribbons[+pth.dataset.i];
     pth.addEventListener("mousemove", ev => {
+      const rb = FLOW_VIEW.ribbons[+pth.dataset.i];   // current values, not a closure
       svg.classList.add("probing");
       paths.forEach(q => q.classList.toggle("lit", q === pth));
       groups.forEach(g => g.classList.toggle("lit",
@@ -1382,14 +1455,18 @@ function wireFlow(svg, ribbons, nodes) {
   });
 
   groups.forEach(g => {
-    const nd = nodes[+g.dataset.i];
+    const nd = FLOW_VIEW.nodes[+g.dataset.i];
     const light = () => {
       svg.classList.add("probing");
       paths.forEach(q => q.classList.toggle("lit",
         q.dataset.from === nd.key || q.dataset.to === nd.key));
       groups.forEach(o => o.classList.toggle("lit", o === g));
     };
-    g.addEventListener("mousemove", ev => { light(); tip.innerHTML = nd.tip; place(ev); });
+    g.addEventListener("mousemove", ev => {
+      light();
+      tip.innerHTML = FLOW_VIEW.nodes[+g.dataset.i].tip;
+      place(ev);
+    });
     g.addEventListener("focus", light);
     g.addEventListener("blur", clear);
     if (nd.filter) {
@@ -1455,8 +1532,8 @@ function tweenFlow(target) {
   const start = performance.now(), DUR = 700;
   const step = now => {
     const t = Math.min((now - start) / DUR, 1);
-    if (t >= 1) { FLOW_RAF = 0; drawFlow(target); return; }  // final frame is exact
-    drawFlow(lerpFlow(from, target, 1 - Math.pow(1 - t, 3)));
+    if (t >= 1) { FLOW_RAF = 0; patchFlow(target, false); return; }  // exact, with labels
+    patchFlow(lerpFlow(from, target, 1 - Math.pow(1 - t, 3)), true);
     FLOW_RAF = requestAnimationFrame(step);
   };
   FLOW_RAF = requestAnimationFrame(step);
@@ -1501,7 +1578,9 @@ function drawFlowStacked(f) {
 const isNarrow = () => window.matchMedia
   && window.matchMedia("(max-width: 720px)").matches;
 
-function renderFlow(rows, rev, brk) {
+/* The diagram needs only the batch response, so it paints as soon as that
+   lands rather than waiting on the stats endpoints behind it. */
+function renderFlowDiagram(rows) {
   const f = buildFlow(rows);
   const narrow = isNarrow();
   // The reading key has to describe the form actually on screen.
@@ -1509,14 +1588,14 @@ function renderFlow(rows, rev, brk) {
     ? "The longer the bar, the more money."
     : "The thicker the ribbon, the more money.";
   if (narrow) drawFlowStacked(f); else tweenFlow(f);
-  renderStageFoot(f, rev);
-  renderFlowPanel(f, brk);
+  renderStageFoot(f);
+  return f;
 }
 
 /* Two figures worth stating under the diagram: the headline, and the one number
    that proves the fraud rule -- counted from this batch on every run, not
    asserted. */
-function renderStageFoot(f, rev) {
+function renderStageFoot(f) {
   const acting = { auto_retry_now: 1, retry_later: 1, customer_nudge: 1 };
   const leaked = ALL.filter(d => d.fraud_blocked && acting[d.action])
     .reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
@@ -1777,14 +1856,19 @@ function renderShift(d, constructed) {
 }
 
 async function loadShift(constructed) {
-  try {
-    renderShift(await getJSON("/stats/drift"), constructed);
-  } catch (e) {
-    renderShift(null, constructed);
-  }
+  // Independent endpoints, so they go out together rather than one after the
+  // other. Each still fails on its own without taking the other down.
+  const [drift, comparison] = await Promise.all([
+    getJSON("/stats/drift").catch(() => null),
+    getJSON("/reports/drift-comparison").catch(() => null),
+  ]);
+
+  renderShift(drift, constructed);
+
   // A committed side-by-side, so the monitor can be seen both firing and not.
   try {
-    const c = await getJSON("/reports/drift-comparison");
+    const c = comparison;
+    if (!c) return;
     const host = el("p-shift-compare");
     if (!host) return;
     const col = (k) => {
@@ -1980,7 +2064,41 @@ function renderLedger() {
         + (d.uncertainty_adjusted ? '<span class="hedged">we hedged this one</span>' : "")
         + "</td></tr>";
 
-    const detail = '<tr class="why" id="why-' + i + '" hidden><td colspan="6"><div class="why-in">'
+    return entry + '<tr class="why" id="why-' + i + '" hidden><td colspan="6"></td></tr>';
+  }).join("");
+
+  el("ledger").querySelectorAll("tr.entry").forEach(tr => {
+    const toggle = () => {
+      const panel = el("why-" + tr.dataset.i);
+      const open = panel.hidden;
+      // Built on first open. Sixty of these were being rendered on every filter
+      // change to show at most one, and each carries the hedge note, the
+      // explanation, the grounded code, the confidence bars and a control.
+      if (open && !panel.dataset.built) {
+        panel.firstChild.innerHTML = detailHTML(ROWS[+tr.dataset.i], +tr.dataset.i);
+        panel.dataset.built = "1";
+        const live = panel.querySelector("[data-live]");
+        if (live) live.addEventListener("click", ev => {
+          ev.stopPropagation();
+          explainLive(live, ROWS[+live.dataset.live]);
+        });
+      }
+      panel.hidden = !open;
+      tr.classList.toggle("open", open);
+      tr.setAttribute("aria-expanded", String(open));
+    };
+    tr.addEventListener("click", toggle);
+    tr.addEventListener("keydown", ev => {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); }
+    });
+  });
+}
+
+/* The expanded reasoning for one payment. Identical markup to what every row
+   used to ship up front; it is just built when someone actually opens it. */
+function detailHTML(d, i) {
+  const probs = d.category_probabilities || {};
+  return '<div class="why-in">'
       + hedgeNote(d)
       + "<div><h4>What happened</h4><p>"
         + (d.explanation ? esc(d.explanation)
@@ -2007,30 +2125,7 @@ function renderLedger() {
             + "Everything else on this page uses offline explanations built from the "
             + "same bank response.</div>"
             + '<div id="live-' + i + '" hidden></div></div>')
-      + "</div></td></tr>";
-
-    return entry + detail;
-  }).join("");
-
-  el("ledger").querySelectorAll("tr.entry").forEach(tr => {
-    const toggle = () => {
-      const panel = el("why-" + tr.dataset.i);
-      const open = panel.hidden;
-      panel.hidden = !open;
-      tr.classList.toggle("open", open);
-      tr.setAttribute("aria-expanded", String(open));
-    };
-    tr.addEventListener("click", toggle);
-    tr.addEventListener("keydown", ev => {
-      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); }
-    });
-  });
-  el("ledger").querySelectorAll("[data-live]").forEach(btn => {
-    btn.addEventListener("click", ev => {
-      ev.stopPropagation();
-      explainLive(btn, ROWS[+btn.dataset.live]);
-    });
-  });
+      + "</div>";
 }
 
 /* The one place this page may spend live provider quota, and only when a human
@@ -2097,7 +2192,12 @@ function fillFilters() {
 async function loadHealth() {
   try {
     const h = await getJSON("/health");
-    if (h.thresholds) THRESHOLDS = h.thresholds;
+    let moved = false;
+    if (h.thresholds) {
+      moved = h.thresholds.auto_retry_at !== THRESHOLDS.auto_retry_at
+           || h.thresholds.give_up_below !== THRESHOLDS.give_up_below;
+      THRESHOLDS = h.thresholds;
+    }
     const llm = h.llm || {};
     el("llm-note").innerHTML =
       "<p>Every explanation on this page is written from the bank's actual decline "
@@ -2111,6 +2211,7 @@ async function loadHealth() {
       + "<p>" + (llm.note ? esc(llm.note)
           : "Selecting a payment and asking for a live explanation is the only "
             + "thing on this page that calls it, one payment at a time.") + "</p>";
+    return moved;
   } catch (e) {
     el("llm-note").innerHTML = "<p>Could not read the service status. The numbers "
       + "above still come from the API.</p>";
@@ -2176,6 +2277,30 @@ async function loadQuality() {
 /* ================================================================ run === */
 function setProvenance(html) { el("provenance").innerHTML = html; }
 
+function provenanceFor(n, choice, constructed, pinned) {
+  const ids = ALL.map(d => d.transaction_id);
+  return '<span class="count">' + num(n) + " payments</span>"
+    + (constructed
+        ? '<span class="stamp built">Patterns shifted deliberately, for '
+          + "demonstration &mdash; not traffic anyone observed</span>"
+        : pinned
+          ? '<span class="stamp pinned">Pinned batch &mdash; the same numbers on '
+            + "every run</span>"
+          : '<span class="stamp fresh">Fresh sample, drawn just now</span>'
+            + '<span class="stamp">starting at <span class="mono">'
+            + esc(ids[0] == null ? "—" : ids[0]) + "</span></span>");
+}
+
+/* Bands still waiting on a request read as placeholders rather than as empty
+   gaps. No shimmer: it is motion nobody asked for, on a page whose one animation
+   is already spoken for. */
+function markLoading(on) {
+  ["verdict-h", "reasons", "ledger"].forEach(id => {
+    const node = el(id);
+    if (node) node.classList.toggle("waiting", on);
+  });
+}
+
 async function run() {
   const choice = CHOICE;
   const constructed = choice === "drift";
@@ -2198,6 +2323,14 @@ async function run() {
     FEATURES = {};
     for (const row of ALL) FEATURES[row.transaction_id] = row;
 
+    // Everything the batch response alone can answer is drawn now, rather than
+    // holding the whole page behind the three requests below it. The flow and
+    // the attention strip are computed entirely from these rows.
+    const flow = renderFlowDiagram(ALL);
+    renderAttention();
+    setProvenance(provenanceFor(n, choice, constructed, pinned));
+    markLoading(true);
+
     const results = await Promise.all([
       getJSON("/stats/recovered-revenue?n=" + n),
       getJSON("/stats/breakdown?n=" + n),
@@ -2207,29 +2340,18 @@ async function run() {
     LAST_BREAKDOWN = brk;
 
     renderVerdict(rev);
-    renderFlow(ALL, rev, brk);
-    renderAttention();
+    renderFlowPanel(flow, brk);
     loadShift(constructed);      // read-only; a failure here must not break the page
     renderReasons(brk);
+    markLoading(false);
 
     FEED = feed.decisions || [];
     FEED_TOTAL = feed.total || FEED.length;
     fillFilters();
     renderLedger();
 
-    const ids = ALL.map(d => d.transaction_id);
-    setProvenance(
-      '<span class="count">' + num(n) + " payments</span>"
-      + (constructed
-          ? '<span class="stamp built">Patterns shifted deliberately, for '
-            + "demonstration &mdash; not traffic anyone observed</span>"
-          : pinned
-            ? '<span class="stamp pinned">Pinned batch &mdash; the same numbers on '
-              + "every run</span>"
-            : '<span class="stamp fresh">Fresh sample, drawn just now</span>'
-              + '<span class="stamp">starting at <span class="mono">'
-              + esc(ids[0] == null ? "—" : ids[0]) + "</span></span>"));
   } catch (err) {
+    markLoading(false);
     setProvenance('<span class="stamp bad">' + esc(err.message)
       + "</span><span>The service may still be starting up. Try running the batch again.</span>");
   } finally {
@@ -2284,13 +2406,18 @@ window.addEventListener("resize", () => {
     if (narrow === FLOW_WAS_NARROW || !ALL.length) return;
     FLOW_WAS_NARROW = narrow;
     FLOW_NOW = null;
-    renderFlow(ALL, null, LAST_BREAKDOWN);
+    renderFlowPanel(renderFlowDiagram(ALL), LAST_BREAKDOWN);
   }, 180);
 });
 
 wireDisclosures();
-// Thresholds first: the ledger draws its cutoff tick from them.
-loadHealth().then(run);
+
+/* THRESHOLDS already defaults to the cutoffs the server actually uses, so the
+   ledger renders correctly without waiting for /health. Serialising a whole
+   round trip in front of the batch bought nothing; if the server ever reports
+   different cutoffs, the ledger redraws then. */
+run();
+loadHealth().then(redraw => { if (redraw && FEED.length) renderLedger(); });
 loadStorm();
 loadQuality();
 </script>

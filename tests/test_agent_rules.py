@@ -32,13 +32,24 @@ requires_models = pytest.mark.skipif(
 
 
 class ExplodingRecoveryModel:
-    """Model 2 stand-in that fails the test if it is ever consulted."""
+    """
+    Model 2 stand-in that fails the test if it is ever consulted.
 
-    def predict_proba(self, *args, **kwargs):
-        raise AssertionError(
-            "Model 2 was called for a fraud_block transaction. The recovery model "
-            "must never be invoked for fraud -- see docs/decisions.md, 'Hard rules'."
-        )
+    Traps EVERY attribute rather than naming the methods the agent happens to
+    call today. Naming them meant the guard depended on call order -- it only
+    tripped because predict_proba was reached first -- so a refactor that changed
+    which method the agent asks for first would have raised AttributeError and
+    quietly stopped testing the hard rule.
+    """
+
+    def __getattr__(self, name):
+        def refuse(*args, **kwargs):
+            raise AssertionError(
+                f"Model 2 was called ({name}) for a fraud_block transaction. The "
+                f"recovery model must never be invoked for fraud -- see "
+                f"docs/decisions.md, 'Hard rules'."
+            )
+        return refuse
 
 
 class ExplodingAdapter:
@@ -88,6 +99,46 @@ class TestDecisionPolicy:
 # --------------------------------------------------------------------------- #
 # The fraud hard block, end to end
 # --------------------------------------------------------------------------- #
+
+
+@pytest.fixture(scope="module")
+def parts():
+    """Loaded once: both artifacts plus one classifier pass over the test set."""
+    agent = RecoveryAgent(adapter=TemplateAdapter())
+    df = pd.read_csv(TEST_DATA)
+    return agent, df, agent.classifier.predict_proba(df)
+
+
+@requires_models
+class TestFastPathsAreBitExact:
+    """
+    The serving path computes the class label and the recovery interval from
+    work it has already done, instead of re-running each model a second time.
+    That is only legitimate if it is the SAME number, so these compare exactly
+    -- no tolerance -- over the whole held-out set.
+    """
+
+    def test_labels_from_proba_match_a_second_model_pass(self, parts):
+        agent, df, proba = parts
+        assert (agent.classifier.predict_from_proba(proba)
+                == agent.classifier.predict(df)).all()
+
+    def test_point_and_interval_from_one_pass_match_two(self, parts):
+        agent, df, proba = parts
+        labels = agent.classifier.predict_from_proba(proba)
+        non_fraud = df.loc[labels != "fraud_block"].reset_index(drop=True)
+        nf_proba = proba[labels != "fraud_block"]
+
+        point, lo, hi = agent.recovery_model.predict_with_interval(non_fraud, nf_proba)
+        was_point = agent.recovery_model.predict_proba(non_fraud, nf_proba)
+        was_lo, was_hi = agent.recovery_model.predict_interval(non_fraud, nf_proba)
+
+        # Exact, not approx: the point estimate is the mean of the same members
+        # the interval is taken from, so any drift here is a real defect.
+        assert (point == was_point).all()
+        assert (lo == was_lo).all()
+        assert (hi == was_hi).all()
+
 
 @requires_models
 class TestFraudHardBlock:

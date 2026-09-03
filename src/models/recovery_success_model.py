@@ -146,6 +146,29 @@ class RecoverySuccessModel:
             return None
         return members.min(axis=1), members.max(axis=1)
 
+    def predict_with_interval(self, df: pd.DataFrame, category_proba: np.ndarray):
+        """
+        Point estimate and interval from ONE pass over the calibration folds.
+
+        predict_proba() averages the five members; predict_interval() then takes
+        their min and max. Asking for both -- which the agent does for every
+        non-fraud transaction -- ran the whole ensemble twice.
+
+        The point estimate here is the mean of exactly the members the interval
+        is built from, which is what predict_interval's docstring above already
+        asserts and what CalibratedClassifierCV.predict_proba already does. So
+        this returns the same numbers, not an approximation of them; equality is
+        asserted exactly over the full held-out set in tests/test_agent_rules.py.
+
+        Returns (point, None, None) when the members are unavailable -- an older
+        model artifact -- matching what predict_interval() already returns in
+        that case, so callers keep their point-estimate fallback.
+        """
+        members = self._member_probabilities(df, category_proba)
+        if members is None:
+            return self.predict_proba(df, category_proba), None, None
+        return members.mean(axis=1), members.min(axis=1), members.max(axis=1)
+
     def _member_probabilities(self, df: pd.DataFrame,
                                category_proba: np.ndarray):
         """The five fold-calibrated predictions per row, or None."""

@@ -81,6 +81,55 @@ class TestQuotaSafety:
 
 
 @requires_models
+class TestLoadCost:
+    """
+    The load path must put the batch through the models exactly once.
+
+    This is the regression that matters for page speed: the dashboard used to
+    seed a batch and then have each stats panel re-decide the identical rows,
+    which tripled the model work for numbers that could not possibly differ.
+    Counted rather than timed, so it fails deterministically the moment a second
+    pass is reintroduced.
+    """
+
+    def test_a_full_dashboard_load_decides_the_batch_once(self, client):
+        bulk = api_main.STATE["bulk_agent"]
+        original = bulk.decide_batch
+        calls = []
+
+        def counting(*args, **kwargs):
+            calls.append(1)
+            return original(*args, **kwargs)
+
+        bulk.decide_batch = counting
+        try:
+            # exactly what the page does on load, in order
+            assert client.post("/simulate/seed?n=50&seed=3").status_code == 200
+            assert client.get("/stats/breakdown?n=50").status_code == 200
+            assert client.get("/stats/recovered-revenue?n=50").status_code == 200
+            assert client.get("/decisions?limit=50").status_code == 200
+            assert client.get("/stats/drift?n=50").status_code in (200, 503)
+        finally:
+            bulk.decide_batch = original
+
+        assert len(calls) == 1, (
+            f"a dashboard load ran the models {len(calls)} times over one batch; "
+            f"the stats panels must read the memo in _decided(), not re-decide."
+        )
+
+    def test_a_new_batch_invalidates_the_memo(self, client):
+        """Reuse must never outlive the rows it describes."""
+        client.post("/simulate/seed?n=40&seed=11")
+        first = client.get("/stats/recovered-revenue?n=40").json()
+        client.post("/simulate/seed?n=40&seed=12")
+        second = client.get("/stats/recovered-revenue?n=40").json()
+
+        assert first["total_failed_value"] != second["total_failed_value"], (
+            "the stats panel served a stale batch after a new seed"
+        )
+
+
+@requires_models
 class TestDecisionFeed:
     def test_explanations_are_populated(self, client):
         """

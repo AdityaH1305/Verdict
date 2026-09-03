@@ -69,6 +69,23 @@ class FailureClassifier:
         codes = self.model.predict(self.encoder.transform(df))
         return np.asarray(CATEGORY_CLASSES, dtype=object)[codes]
 
+    @staticmethod
+    def predict_from_proba(proba: np.ndarray) -> np.ndarray:
+        """
+        Labels from probabilities that have already been computed.
+
+        Identical to predict() -- the label IS the argmax of the class
+        probabilities -- but a caller that needs both was paying for a second
+        encode and a second full model pass to obtain it. The agent needs both on
+        every decision, which made this the single most repeated wasted pass in
+        the serving path.
+
+        Equality with predict() is asserted element-for-element over the whole
+        held-out set in tests/test_agent_rules.py, with exact comparison rather
+        than a tolerance: this is the same computation, not an approximation.
+        """
+        return np.asarray(CATEGORY_CLASSES, dtype=object)[proba.argmax(axis=1)]
+
     def oof_predict_proba(self, df: pd.DataFrame, n_splits: int = 5) -> np.ndarray:
         """
         Out-of-fold predicted probabilities on the training set.

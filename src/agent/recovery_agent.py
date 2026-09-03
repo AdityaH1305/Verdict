@@ -191,7 +191,9 @@ class RecoveryAgent:
     def decide(self, transaction: dict) -> dict:
         df = pd.DataFrame([transaction])
         category_proba = self.classifier.predict_proba(df)
-        category = self.classifier.predict(df)[0]
+        # The label is the argmax of the probabilities just computed; asking the
+        # classifier again would re-encode and re-run the model for it.
+        category = self.classifier.predict_from_proba(category_proba)[0]
         proba_map = {c: round(float(p), 4)
                      for c, p in zip(self.classifier.classes_, category_proba[0])}
 
@@ -208,12 +210,14 @@ class RecoveryAgent:
             )
         # -------------------------------------------------------------------
 
-        recovery_prob = float(
-            self.recovery_model.predict_proba(df, category_proba)[0]
-        )
-
-        interval = self.recovery_model.predict_interval(df, category_proba)
-        lo, hi = (float(interval[0][0]), float(interval[1][0])) if interval else (None, None)
+        # Point estimate and interval come from one pass over the calibration
+        # folds -- the estimate is the mean of the same members the interval is
+        # taken from, so a second pass could only recompute them.
+        point, lo_arr, hi_arr = self.recovery_model.predict_with_interval(
+            df, category_proba)
+        recovery_prob = float(point[0])
+        lo, hi = ((float(lo_arr[0]), float(hi_arr[0]))
+                  if lo_arr is not None else (None, None))
 
         action = self.policy._point_action(category, recovery_prob)
         action, reason = self.policy.apply_uncertainty(action, category, lo, hi)
@@ -250,7 +254,7 @@ class RecoveryAgent:
         """
         df = transactions.reset_index(drop=True)
         category_proba = self.classifier.predict_proba(df)
-        categories = self.classifier.predict(df)
+        categories = self.classifier.predict_from_proba(category_proba)
 
         is_fraud = categories == FRAUD_CLASS
         recovery = np.full(len(df), np.nan)
@@ -262,18 +266,22 @@ class RecoveryAgent:
         if (~is_fraud).any():
             non_fraud = df.loc[~is_fraud].reset_index(drop=True)
             non_fraud_proba = category_proba[~is_fraud]
-            recovery[~is_fraud] = self.recovery_model.predict_proba(
+            # One pass over the calibration folds yields both the point estimate
+            # and the interval; they are the mean and the min/max of the same
+            # five members, so computing them separately ran the ensemble twice.
+            point, lo_arr, hi_arr = self.recovery_model.predict_with_interval(
                 non_fraud, non_fraud_proba
             )
+            recovery[~is_fraud] = point
 
             # NOTE: scattered back through `is_fraud` -- the PREDICTED fraud mask
             # computed above -- and never through the true-label mask used by
             # drop_fraud_rows(). The two differ (Model 1's fraud recall is 0.985),
             # so mixing them would silently shift every interval by a few rows and
             # attach one transaction's uncertainty to another's decision.
-            interval = self.recovery_model.predict_interval(non_fraud, non_fraud_proba)
-            if interval is not None:
-                lo_all[~is_fraud], hi_all[~is_fraud] = interval
+            if lo_arr is not None:
+                lo_all[~is_fraud] = lo_arr
+                hi_all[~is_fraud] = hi_arr
 
         actions, reasons = [], []
         for fraud, cat, p, lo, hi in zip(is_fraud, categories, recovery, lo_all, hi_all):

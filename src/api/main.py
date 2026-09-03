@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -77,6 +78,12 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+# A batch of 300 decisions serialises to ~207KB, and 1,000 to ~690KB. It is
+# highly repetitive JSON, so compression takes roughly an order of magnitude off
+# the wire for the one response that dominates the dashboard's load.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 def _agent() -> RecoveryAgent:
@@ -153,6 +160,32 @@ def _current_batch(n: int, seed: Optional[int] = None) -> pd.DataFrame:
         batch = _sample_batch(n, seed)
         STATE["batch"] = batch
     return batch
+
+
+def _decided(n: int, seed: Optional[int] = None) -> pd.DataFrame:
+    """
+    The current batch, decided once and reused.
+
+    The dashboard's load path asks for the same batch three times -- once to seed
+    it, then once for each stats panel -- and every ask re-ran both models over
+    every row. The batch is immutable for as long as it is the current one and
+    the models are deterministic, so runs two and three could only ever
+    reproduce the frame run one already produced. Measured on the 300-row demo
+    batch that was 0.92s of model work per page load where 0.15s was useful.
+
+    Keyed on the IDENTITY of the stored batch rather than on `n` or a version
+    counter: replacing STATE["batch"] is the only way a batch can change, so the
+    memo cannot outlive the rows it describes and there is no separate
+    invalidation step for a future caller to forget.
+    """
+    batch = _current_batch(n, seed)
+    cached = STATE.get("decided")
+    if cached is not None and cached[0] is batch:
+        return cached[1]
+
+    decisions = _bulk_agent().decide_batch(batch)
+    STATE["decided"] = (batch, decisions)
+    return decisions
 
 
 def _records(df: pd.DataFrame) -> List[Dict[str, Any]]:
@@ -316,6 +349,9 @@ def simulate_seed(n: int = Query(default=200, ge=1, le=2000),
     # bulk agent + template narration: populates the "why" in the feed without
     # spending provider quota on a whole batch
     decisions = agent.decide_batch(df, log=True, explain=True)
+    # This IS the frame the stats panels are about to ask for, so hand it to them
+    # rather than making them re-derive it.
+    STATE["decided"] = (df, decisions)
     return {
         "count": int(len(decisions)),
         "seed": seed,
@@ -356,6 +392,9 @@ def simulate_demo():
     df = pd.read_csv(DEMO_BATCH_CSV)
     STATE["batch"] = df          # so /stats/* describe the demo batch too
     decisions = agent.decide_batch(df, log=True, explain=True)
+    # This IS the frame the stats panels are about to ask for, so hand it to them
+    # rather than making them re-derive it.
+    STATE["decided"] = (df, decisions)
 
     return {
         "count": int(len(decisions)),
@@ -396,6 +435,9 @@ def simulate_drift_demo():
     df = pd.read_csv(DRIFT_DEMO_CSV)
     STATE["batch"] = df
     decisions = agent.decide_batch(df, log=True, explain=True)
+    # This IS the frame the stats panels are about to ask for, so hand it to them
+    # rather than making them re-derive it.
+    STATE["decided"] = (df, decisions)
 
     return {
         "count": int(len(decisions)),
@@ -456,7 +498,7 @@ def drift_comparison_report():
 def breakdown(n: int = Query(default=500, ge=1, le=2000),
                seed: Optional[int] = Query(default=None)):
     """Failure-category and action breakdown for the dashboard charts."""
-    decisions = _bulk_agent().decide_batch(_current_batch(n, seed))
+    decisions = _decided(n, seed)
     return {
         "n": int(len(decisions)),
         "by_category": decisions["predicted_category"].value_counts().to_dict(),
@@ -480,7 +522,7 @@ def recovered_revenue(n: int = Query(default=500, ge=1, le=2000),
     ground-truth outcomes exist (held-out data), the realised figure is reported
     alongside it so the estimate can be checked rather than taken on faith.
     """
-    decisions = _bulk_agent().decide_batch(_current_batch(n, seed))
+    decisions = _decided(n, seed)
     acting = {"auto_retry_now", "retry_later", "customer_nudge"}
     acted = decisions[decisions["action"].isin(acting)]
 
