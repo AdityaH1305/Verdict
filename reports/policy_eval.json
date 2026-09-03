@@ -1,0 +1,1109 @@
+{
+  "assumptions": {
+    "cost_per_retry": 10.0,
+    "cost_per_nudge_extra": 0.0,
+    "sweep_min": 0.0,
+    "sweep_max": 500.0,
+    "sweep_step": 5.0,
+    "cost_note": "Cost per retry is an assumption, not a measurement -- nothing in this project measures it. It is the one number that decides which policy wins, which is why the whole range is reported rather than a single figure.",
+    "counterfactual_note": "We assume we know, for every payment, whether a retry would have worked -- including the payments a policy chose not to retry. Real production data never tells you that: you only learn the outcome for the attempts you actually made. So this compares the policies fairly against each other, and is not a forecast.",
+    "single_attempt_note": "One attempt per payment. The outcome label says whether a retry or a nudge would have worked, not how many tries it would take, so this does not model repeated attempts."
+  },
+  "dataset": {
+    "split": "held-out test set",
+    "n": 1600,
+    "total_failed_value": 2235064.37,
+    "recoverable_count": 450,
+    "recoverable_value": 461672.0
+  },
+  "policies": [
+    {
+      "key": "always_retry",
+      "label": "Retry everything",
+      "attempts": 1600,
+      "attempt_share": 1.0,
+      "recovered": 450,
+      "recovered_revenue": 461672.0,
+      "wasted_retries": 1150,
+      "nudges": 0,
+      "retry_cost": 16000.0,
+      "net_value": 445672.0,
+      "net_per_1000_failed": 278545.0
+    },
+    {
+      "key": "never_retry",
+      "label": "Retry nothing",
+      "attempts": 0,
+      "attempt_share": 0.0,
+      "recovered": 0,
+      "recovered_revenue": 0.0,
+      "wasted_retries": 0,
+      "nudges": 0,
+      "retry_cost": 0.0,
+      "net_value": 0.0,
+      "net_per_1000_failed": 0.0
+    },
+    {
+      "key": "fixed_rule",
+      "label": "Retry what the bank says might work",
+      "attempts": 483,
+      "attempt_share": 0.3019,
+      "recovered": 269,
+      "recovered_revenue": 289972.07,
+      "wasted_retries": 214,
+      "nudges": 0,
+      "retry_cost": 4830.0,
+      "net_value": 285142.07,
+      "net_per_1000_failed": 178213.79
+    },
+    {
+      "key": "verdict",
+      "label": "What Verdict did",
+      "attempts": 858,
+      "attempt_share": 0.5363,
+      "recovered": 423,
+      "recovered_revenue": 426920.42,
+      "wasted_retries": 435,
+      "nudges": 369,
+      "retry_cost": 8580.0,
+      "net_value": 418340.42,
+      "net_per_1000_failed": 261462.76
+    }
+  ],
+  "sweep": [
+    {
+      "cost": 0.0,
+      "net_value": {
+        "always_retry": 461672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 289972.07,
+        "verdict": 426920.42
+      },
+      "winner": "always_retry"
+    },
+    {
+      "cost": 5.0,
+      "net_value": {
+        "always_retry": 453672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 287557.07,
+        "verdict": 422630.42
+      },
+      "winner": "always_retry"
+    },
+    {
+      "cost": 10.0,
+      "net_value": {
+        "always_retry": 445672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 285142.07,
+        "verdict": 418340.42
+      },
+      "winner": "always_retry"
+    },
+    {
+      "cost": 15.0,
+      "net_value": {
+        "always_retry": 437672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 282727.07,
+        "verdict": 414050.42
+      },
+      "winner": "always_retry"
+    },
+    {
+      "cost": 20.0,
+      "net_value": {
+        "always_retry": 429672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 280312.07,
+        "verdict": 409760.42
+      },
+      "winner": "always_retry"
+    },
+    {
+      "cost": 25.0,
+      "net_value": {
+        "always_retry": 421672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 277897.07,
+        "verdict": 405470.42
+      },
+      "winner": "always_retry"
+    },
+    {
+      "cost": 30.0,
+      "net_value": {
+        "always_retry": 413672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 275482.07,
+        "verdict": 401180.42
+      },
+      "winner": "always_retry"
+    },
+    {
+      "cost": 35.0,
+      "net_value": {
+        "always_retry": 405672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 273067.07,
+        "verdict": 396890.42
+      },
+      "winner": "always_retry"
+    },
+    {
+      "cost": 40.0,
+      "net_value": {
+        "always_retry": 397672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 270652.07,
+        "verdict": 392600.42
+      },
+      "winner": "always_retry"
+    },
+    {
+      "cost": 45.0,
+      "net_value": {
+        "always_retry": 389672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 268237.07,
+        "verdict": 388310.42
+      },
+      "winner": "always_retry"
+    },
+    {
+      "cost": 50.0,
+      "net_value": {
+        "always_retry": 381672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 265822.07,
+        "verdict": 384020.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 55.0,
+      "net_value": {
+        "always_retry": 373672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 263407.07,
+        "verdict": 379730.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 60.0,
+      "net_value": {
+        "always_retry": 365672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 260992.07,
+        "verdict": 375440.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 65.0,
+      "net_value": {
+        "always_retry": 357672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 258577.07,
+        "verdict": 371150.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 70.0,
+      "net_value": {
+        "always_retry": 349672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 256162.07,
+        "verdict": 366860.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 75.0,
+      "net_value": {
+        "always_retry": 341672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 253747.07,
+        "verdict": 362570.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 80.0,
+      "net_value": {
+        "always_retry": 333672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 251332.07,
+        "verdict": 358280.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 85.0,
+      "net_value": {
+        "always_retry": 325672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 248917.07,
+        "verdict": 353990.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 90.0,
+      "net_value": {
+        "always_retry": 317672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 246502.07,
+        "verdict": 349700.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 95.0,
+      "net_value": {
+        "always_retry": 309672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 244087.07,
+        "verdict": 345410.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 100.0,
+      "net_value": {
+        "always_retry": 301672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 241672.07,
+        "verdict": 341120.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 105.0,
+      "net_value": {
+        "always_retry": 293672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 239257.07,
+        "verdict": 336830.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 110.0,
+      "net_value": {
+        "always_retry": 285672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 236842.07,
+        "verdict": 332540.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 115.0,
+      "net_value": {
+        "always_retry": 277672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 234427.07,
+        "verdict": 328250.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 120.0,
+      "net_value": {
+        "always_retry": 269672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 232012.07,
+        "verdict": 323960.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 125.0,
+      "net_value": {
+        "always_retry": 261672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 229597.07,
+        "verdict": 319670.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 130.0,
+      "net_value": {
+        "always_retry": 253672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 227182.07,
+        "verdict": 315380.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 135.0,
+      "net_value": {
+        "always_retry": 245672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 224767.07,
+        "verdict": 311090.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 140.0,
+      "net_value": {
+        "always_retry": 237672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 222352.07,
+        "verdict": 306800.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 145.0,
+      "net_value": {
+        "always_retry": 229672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 219937.07,
+        "verdict": 302510.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 150.0,
+      "net_value": {
+        "always_retry": 221672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 217522.07,
+        "verdict": 298220.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 155.0,
+      "net_value": {
+        "always_retry": 213672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 215107.07,
+        "verdict": 293930.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 160.0,
+      "net_value": {
+        "always_retry": 205672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 212692.07,
+        "verdict": 289640.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 165.0,
+      "net_value": {
+        "always_retry": 197672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 210277.07,
+        "verdict": 285350.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 170.0,
+      "net_value": {
+        "always_retry": 189672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 207862.07,
+        "verdict": 281060.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 175.0,
+      "net_value": {
+        "always_retry": 181672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 205447.07,
+        "verdict": 276770.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 180.0,
+      "net_value": {
+        "always_retry": 173672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 203032.07,
+        "verdict": 272480.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 185.0,
+      "net_value": {
+        "always_retry": 165672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 200617.07,
+        "verdict": 268190.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 190.0,
+      "net_value": {
+        "always_retry": 157672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 198202.07,
+        "verdict": 263900.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 195.0,
+      "net_value": {
+        "always_retry": 149672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 195787.07,
+        "verdict": 259610.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 200.0,
+      "net_value": {
+        "always_retry": 141672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 193372.07,
+        "verdict": 255320.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 205.0,
+      "net_value": {
+        "always_retry": 133672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 190957.07,
+        "verdict": 251030.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 210.0,
+      "net_value": {
+        "always_retry": 125672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 188542.07,
+        "verdict": 246740.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 215.0,
+      "net_value": {
+        "always_retry": 117672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 186127.07,
+        "verdict": 242450.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 220.0,
+      "net_value": {
+        "always_retry": 109672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 183712.07,
+        "verdict": 238160.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 225.0,
+      "net_value": {
+        "always_retry": 101672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 181297.07,
+        "verdict": 233870.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 230.0,
+      "net_value": {
+        "always_retry": 93672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 178882.07,
+        "verdict": 229580.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 235.0,
+      "net_value": {
+        "always_retry": 85672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 176467.07,
+        "verdict": 225290.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 240.0,
+      "net_value": {
+        "always_retry": 77672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 174052.07,
+        "verdict": 221000.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 245.0,
+      "net_value": {
+        "always_retry": 69672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 171637.07,
+        "verdict": 216710.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 250.0,
+      "net_value": {
+        "always_retry": 61672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 169222.07,
+        "verdict": 212420.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 255.0,
+      "net_value": {
+        "always_retry": 53672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 166807.07,
+        "verdict": 208130.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 260.0,
+      "net_value": {
+        "always_retry": 45672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 164392.07,
+        "verdict": 203840.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 265.0,
+      "net_value": {
+        "always_retry": 37672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 161977.07,
+        "verdict": 199550.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 270.0,
+      "net_value": {
+        "always_retry": 29672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 159562.07,
+        "verdict": 195260.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 275.0,
+      "net_value": {
+        "always_retry": 21672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 157147.07,
+        "verdict": 190970.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 280.0,
+      "net_value": {
+        "always_retry": 13672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 154732.07,
+        "verdict": 186680.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 285.0,
+      "net_value": {
+        "always_retry": 5672.0,
+        "never_retry": 0.0,
+        "fixed_rule": 152317.07,
+        "verdict": 182390.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 290.0,
+      "net_value": {
+        "always_retry": -2328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 149902.07,
+        "verdict": 178100.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 295.0,
+      "net_value": {
+        "always_retry": -10328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 147487.07,
+        "verdict": 173810.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 300.0,
+      "net_value": {
+        "always_retry": -18328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 145072.07,
+        "verdict": 169520.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 305.0,
+      "net_value": {
+        "always_retry": -26328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 142657.07,
+        "verdict": 165230.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 310.0,
+      "net_value": {
+        "always_retry": -34328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 140242.07,
+        "verdict": 160940.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 315.0,
+      "net_value": {
+        "always_retry": -42328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 137827.07,
+        "verdict": 156650.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 320.0,
+      "net_value": {
+        "always_retry": -50328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 135412.07,
+        "verdict": 152360.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 325.0,
+      "net_value": {
+        "always_retry": -58328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 132997.07,
+        "verdict": 148070.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 330.0,
+      "net_value": {
+        "always_retry": -66328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 130582.07,
+        "verdict": 143780.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 335.0,
+      "net_value": {
+        "always_retry": -74328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 128167.07,
+        "verdict": 139490.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 340.0,
+      "net_value": {
+        "always_retry": -82328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 125752.07,
+        "verdict": 135200.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 345.0,
+      "net_value": {
+        "always_retry": -90328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 123337.07,
+        "verdict": 130910.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 350.0,
+      "net_value": {
+        "always_retry": -98328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 120922.07,
+        "verdict": 126620.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 355.0,
+      "net_value": {
+        "always_retry": -106328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 118507.07,
+        "verdict": 122330.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 360.0,
+      "net_value": {
+        "always_retry": -114328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 116092.07,
+        "verdict": 118040.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 365.0,
+      "net_value": {
+        "always_retry": -122328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 113677.07,
+        "verdict": 113750.42
+      },
+      "winner": "verdict"
+    },
+    {
+      "cost": 370.0,
+      "net_value": {
+        "always_retry": -130328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 111262.07,
+        "verdict": 109460.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 375.0,
+      "net_value": {
+        "always_retry": -138328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 108847.07,
+        "verdict": 105170.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 380.0,
+      "net_value": {
+        "always_retry": -146328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 106432.07,
+        "verdict": 100880.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 385.0,
+      "net_value": {
+        "always_retry": -154328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 104017.07,
+        "verdict": 96590.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 390.0,
+      "net_value": {
+        "always_retry": -162328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 101602.07,
+        "verdict": 92300.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 395.0,
+      "net_value": {
+        "always_retry": -170328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 99187.07,
+        "verdict": 88010.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 400.0,
+      "net_value": {
+        "always_retry": -178328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 96772.07,
+        "verdict": 83720.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 405.0,
+      "net_value": {
+        "always_retry": -186328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 94357.07,
+        "verdict": 79430.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 410.0,
+      "net_value": {
+        "always_retry": -194328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 91942.07,
+        "verdict": 75140.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 415.0,
+      "net_value": {
+        "always_retry": -202328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 89527.07,
+        "verdict": 70850.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 420.0,
+      "net_value": {
+        "always_retry": -210328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 87112.07,
+        "verdict": 66560.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 425.0,
+      "net_value": {
+        "always_retry": -218328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 84697.07,
+        "verdict": 62270.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 430.0,
+      "net_value": {
+        "always_retry": -226328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 82282.07,
+        "verdict": 57980.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 435.0,
+      "net_value": {
+        "always_retry": -234328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 79867.07,
+        "verdict": 53690.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 440.0,
+      "net_value": {
+        "always_retry": -242328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 77452.07,
+        "verdict": 49400.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 445.0,
+      "net_value": {
+        "always_retry": -250328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 75037.07,
+        "verdict": 45110.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 450.0,
+      "net_value": {
+        "always_retry": -258328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 72622.07,
+        "verdict": 40820.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 455.0,
+      "net_value": {
+        "always_retry": -266328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 70207.07,
+        "verdict": 36530.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 460.0,
+      "net_value": {
+        "always_retry": -274328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 67792.07,
+        "verdict": 32240.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 465.0,
+      "net_value": {
+        "always_retry": -282328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 65377.07,
+        "verdict": 27950.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 470.0,
+      "net_value": {
+        "always_retry": -290328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 62962.07,
+        "verdict": 23660.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 475.0,
+      "net_value": {
+        "always_retry": -298328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 60547.07,
+        "verdict": 19370.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 480.0,
+      "net_value": {
+        "always_retry": -306328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 58132.07,
+        "verdict": 15080.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 485.0,
+      "net_value": {
+        "always_retry": -314328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 55717.07,
+        "verdict": 10790.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 490.0,
+      "net_value": {
+        "always_retry": -322328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 53302.07,
+        "verdict": 6500.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 495.0,
+      "net_value": {
+        "always_retry": -330328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 50887.07,
+        "verdict": 2210.42
+      },
+      "winner": "fixed_rule"
+    },
+    {
+      "cost": 500.0,
+      "net_value": {
+        "always_retry": -338328.0,
+        "never_retry": 0.0,
+        "fixed_rule": 48472.07,
+        "verdict": -2079.58
+      },
+      "winner": "fixed_rule"
+    }
+  ],
+  "crossovers": [
+    {
+      "against": "always_retry",
+      "against_label": "Retry everything",
+      "cost": 46.84,
+      "verdict_wins": "above",
+      "note": "Verdict nets more than 'retry everything' above Rs 46.84 per attempt."
+    },
+    {
+      "against": "fixed_rule",
+      "against_label": "Retry what the bank says might work",
+      "cost": 365.2,
+      "verdict_wins": "below",
+      "note": "Verdict nets more than 'retry what the bank says might work' below Rs 365.20 per attempt."
+    }
+  ],
+  "headline": {
+    "recoverable_share_captured": 0.9247,
+    "attempt_reduction_vs_always": 0.4637,
+    "verdict_wins_between": [
+      46.84,
+      365.2
+    ]
+  }
+}

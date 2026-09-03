@@ -43,6 +43,7 @@ DEMO_BATCH_CSV = os.path.join(ROOT, "data", "demo", "demo_batch.csv")
 DRIFT_DEMO_CSV = os.path.join(ROOT, "data", "demo", "drift_demo_batch.csv")
 DRIFT_COMPARISON_REPORT = os.path.join(REPORTS_DIR, "drift_comparison.json")
 METRICS_REPORT = os.path.join(REPORTS_DIR, "metrics.json")
+POLICY_EVAL_REPORT = os.path.join(REPORTS_DIR, "policy_eval.json")
 
 STATE: Dict[str, Any] = {"agent": None, "bulk_agent": None, "error": None}
 
@@ -584,6 +585,26 @@ def metrics_report():
             detail="No metrics report yet. Run: python scripts/train.py",
         )
     with open(METRICS_REPORT) as f:
+        return json.load(f)
+
+
+@app.get("/reports/policy-eval")
+def policy_eval_report():
+    """
+    Serve the offline policy comparison written by scripts/policy_eval.py.
+
+    A static passthrough, exactly like /reports/retry-storm: the browser cannot
+    read a local file, and re-running the simulation per request would be
+    wasteful and would drift from the numbers quoted alongside it.
+
+    Read-only. Reads no model, calls no agent, and cannot affect a decision.
+    """
+    if not os.path.exists(POLICY_EVAL_REPORT):
+        raise HTTPException(
+            status_code=404,
+            detail="No policy evaluation yet. Run: python scripts/policy_eval.py",
+        )
+    with open(POLICY_EVAL_REPORT) as f:
         return json.load(f)
 
 
