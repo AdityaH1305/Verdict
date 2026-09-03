@@ -320,8 +320,13 @@ def simulate_seed(n: int = Query(default=200, ge=1, le=2000),
         "count": int(len(decisions)),
         "seed": seed,
         "action_mix": decisions["action"].value_counts().to_dict(),
+        # `failure_category` stays server-side: it is the diagnosis ground truth,
+        # and handing it to the browser would let the page grade the classifier.
+        # `retry_success` is the OUTCOME, which /stats/recovered-revenue already
+        # reports in aggregate -- the dashboard's money-flow needs it per row to
+        # show which actions actually recovered anything.
         "decisions": _records(decisions.drop(
-            columns=["failure_category", "retry_success"], errors="ignore")),
+            columns=["failure_category"], errors="ignore")),
     }
 
 
@@ -356,8 +361,13 @@ def simulate_demo():
         "count": int(len(decisions)),
         "pinned": True,
         "action_mix": decisions["action"].value_counts().to_dict(),
+        # `failure_category` stays server-side: it is the diagnosis ground truth,
+        # and handing it to the browser would let the page grade the classifier.
+        # `retry_success` is the OUTCOME, which /stats/recovered-revenue already
+        # reports in aggregate -- the dashboard's money-flow needs it per row to
+        # show which actions actually recovered anything.
         "decisions": _records(decisions.drop(
-            columns=["failure_category", "retry_success"], errors="ignore")),
+            columns=["failure_category"], errors="ignore")),
     }
 
 
@@ -394,8 +404,13 @@ def simulate_drift_demo():
         "warning": "This batch's drift was introduced deliberately for "
                    "demonstration. It is not observed traffic.",
         "action_mix": decisions["action"].value_counts().to_dict(),
+        # `failure_category` stays server-side: it is the diagnosis ground truth,
+        # and handing it to the browser would let the page grade the classifier.
+        # `retry_success` is the OUTCOME, which /stats/recovered-revenue already
+        # reports in aggregate -- the dashboard's money-flow needs it per row to
+        # show which actions actually recovered anything.
         "decisions": _records(decisions.drop(
-            columns=["failure_category", "retry_success"], errors="ignore")),
+            columns=["failure_category"], errors="ignore")),
     }
 
 

@@ -114,6 +114,19 @@ class TestDecisionFeed:
             assert d["action"] == "no_action"
             assert "fraud" in d["explanation"].lower()
 
+    def test_seed_rows_carry_the_outcome_but_not_the_diagnosis_label(self, client):
+        """
+        The dashboard's money-flow needs the realised outcome per row to show
+        which actions actually recovered anything. The diagnosis label stays
+        server-side -- handing it over would let the page grade the classifier,
+        which is not the page's job.
+        """
+        rows = client.post("/simulate/seed?n=40&seed=1").json()["decisions"]
+
+        assert rows
+        assert "retry_success" in rows[0]
+        assert "failure_category" not in rows[0]
+
     def test_each_run_draws_a_fresh_sample(self, client):
         """
         Regression: /simulate/seed used `.head(n)`, so "Run simulation" replayed

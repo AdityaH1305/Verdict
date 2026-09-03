@@ -51,8 +51,8 @@ sentence that says what the numbers mean.
 | The verdict (headline recovered revenue, where the failed money went) | `GET /stats/recovered-revenue` |
 | What needs you (escalations, pattern shift, fraud blocks) | the batch response, plus `GET /stats/drift` |
 | Pattern-shift detail, and the monitor firing vs not firing | `GET /stats/drift`, `GET /reports/drift-comparison` |
-| Why the payments failed, split card vs UPI | `GET /stats/breakdown` → `category_by_method`, `by_payment_method` |
-| What we did about it | `GET /stats/breakdown` → `by_action`, cutoffs from `GET /health` |
+| **Where your money went** — the money flow | the batch response (`amount`, `predicted_category`, `action`, `retry_success`) |
+| Cards and UPI fail differently | `GET /stats/breakdown` → `category_by_method`, `by_payment_method` |
 | We stopped hammering the banks (retry storm) | `GET /reports/retry-storm` |
 | Every decision, on the record (the ledger) | `POST /simulate/*` then `GET /decisions` |
 | Uncertainty range per row | `recovery_interval` on each decision |
@@ -62,13 +62,42 @@ The page computes no decisions of its own — every number comes from the backen
 Where it sums or divides (the escalated value in "what needs you", the card-vs-UPI
 skew), it is summing fields the backend already returned for that same batch.
 
+## The money flow
+
+The centrepiece. A hand-rolled SVG Sankey on a deep ink stage — the one place the
+page goes dark — showing failed money on the left, why it failed, what Verdict did,
+and where it ended up. **Ribbon thickness is rupees throughout.** Hover a ribbon and
+it writes a sentence; select a reason or action block and it drives the ledger's
+existing filters, so the diagram and the table can never disagree.
+
+Switching batches tweens the underlying values over 700ms and recomputes the paths
+each frame, so picking "a day when patterns shifted" visibly swells the fraud and UPI
+currents. That is the page's one orchestrated motion, and `prefers-reduced-motion`
+skips straight to the final state.
+
+Two properties are worth knowing:
+
+- **It is arithmetically closed.** Every stage sums to the same total, and the
+  Recovered node equals `actual_recovered_value` from `/stats/recovered-revenue`
+  exactly. Both are checked in the browser during verification.
+- **It makes the fraud rule geometric.** Money blocked as fraud has exactly one
+  outgoing ribbon, to "Left alone". There is no path from fraud to a recovery action
+  because the agent cannot produce one — the diagram cannot draw what does not exist.
+  The stage footer states the same thing as a number, counted from the batch on every
+  run.
+
+No charting library: the CSP/offline test forbids external references, and this is a
+fixed 1-4-5-4 graph, so the layout is arithmetic rather than a dependency. Below 720px
+it becomes three stacked steps with the same labels, colours, rupees and click-to-filter.
+
 ## Progressive disclosure
 
 Every band ends with one consistent affordance — a text button that opens a ruled
 panel holding the technical layer for that band: the predicted-vs-realised revenue
-comparison, the PSI table with its threshold scale, the model class names beside
-their merchant labels, the 0.50 / 0.25 cutoffs and the hedging rule, the full
-retry simulation, and the measured model metrics. Nothing was removed from the old
+comparison, the flow's action table (counts, shares and value) with the 0.50 / 0.25
+cutoffs and the hedging rule, the PSI table with its threshold scale, the model class
+names beside their merchant labels, the full retry simulation, and the measured model
+metrics. Nothing was removed from the old
 page; the model vocabulary moved one click deeper.
 
 ## Quota safety

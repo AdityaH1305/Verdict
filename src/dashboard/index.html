@@ -65,6 +65,36 @@
 
   --lift: 0 1px 2px rgba(18,23,34,.05), 0 10px 30px -12px rgba(18,23,34,.20);
 
+  /* The stage: the one place the page goes deep. Declared here, not inside a
+     media or [data-theme] block, because the money flow keeps the same dark
+     world in both themes -- inverted against pale paper, lifted against dark. */
+  --stage:      #12161F;
+  --stage-2:    #1B212C;
+  --stage-rule: #2C3444;
+  --stage-ink:  #EEF1F6;
+  --stage-mid:  #9AA5B6;
+  --stage-soft: #6D788B;
+
+  /* Reason hues, tuned to read on the stage rather than on paper. */
+  --sr-soft:  #45C4CE;
+  --sr-drop:  #E7B25C;
+  --sr-hard:  #F0757E;
+  --sr-fraud: #B78FD4;
+
+  /* Action ramp on the stage: three shades of "we are handling it", then amber
+     where a human must act, then grey for correct inaction. */
+  --sa-1: #AEBDF7;
+  --sa-2: #8698E4;
+  --sa-3: #6675BE;
+  --sa-4: #E7B25C;
+  --sa-5: #79839A;
+
+  /* Where it ended up. */
+  --so-win:  #3FC79B;
+  --so-lost: #66738C;
+  --so-wait: #E7B25C;
+  --so-none: #5D6880;
+
   --figure: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display",
             "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
   --text:   -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text",
@@ -407,6 +437,90 @@ select:hover:not(:disabled), .btn:hover:not(:disabled) { border-color: var(--ind
 .railkey span { display: inline-flex; align-items: center; gap: 7px; }
 .railkey i { width: 10px; height: 10px; border-radius: 2px; }
 
+/* ------------------------------------------------------- the money flow --- */
+/* The page's one deep surface. Everything else stays flat on paper; the eye is
+   meant to land here first and read the whole system in one pass. */
+.stage {
+  background: var(--stage); border: 1px solid var(--stage-rule);
+  border-radius: 12px; padding: 24px 26px 26px; margin-top: 8px;
+  position: relative; overflow: hidden;
+}
+.stage-key {
+  color: var(--stage-mid); font-size: 12.5px; margin: 0 0 18px; max-width: 78ch;
+}
+.stage-key b { color: var(--stage-ink); font-weight: 600; }
+
+.flow-wrap { position: relative; }
+.flow-svg { display: block; width: 100%; height: auto; }
+/* The flow draws itself in left to right on first load, the direction it is
+   meant to be read. Killed wholesale by the reduced-motion block below. */
+@keyframes flow-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.flow-svg.reveal { animation: flow-in .85s cubic-bezier(.22,.61,.36,1) both; }
+.flow-svg text { font-family: var(--text); }
+/* A halo so a label stays readable where it crosses a ribbon. */
+.flow-svg .lab, .flow-svg .amt-t, .flow-svg .colhead {
+  paint-order: stroke fill; stroke: var(--stage); stroke-width: 3.5px;
+  stroke-linejoin: round;
+}
+.flow-svg .colhead { fill: var(--stage-soft); font-size: 11.5px; font-weight: 600; }
+.flow-svg .lab { fill: var(--stage-ink); font-size: 12.5px; font-weight: 600; }
+.flow-svg .amt-t {
+  fill: var(--stage-mid); font-size: 12px; font-family: var(--figure);
+  font-variant-numeric: tabular-nums;
+}
+.flow-svg .ribbon { fill-opacity: .42; transition: fill-opacity .18s ease; }
+.flow-svg .node { cursor: pointer; }
+.flow-svg .node rect { rx: 2; }
+.flow-svg .node:focus { outline: none; }
+.flow-svg .node:focus-visible rect { stroke: var(--stage-ink); stroke-width: 2; }
+/* Hover state is driven by a class on the svg, so one rule dims everything the
+   pointer is not asking about. */
+.flow-svg.probing .ribbon { fill-opacity: .08; }
+.flow-svg.probing .ribbon.lit { fill-opacity: .92; }
+.flow-svg.probing .node:not(.lit) rect { opacity: .35; }
+.flow-svg.probing .node:not(.lit) text { opacity: .35; }
+
+.flow-tip {
+  position: absolute; pointer-events: none; z-index: 3;
+  background: var(--stage-2); border: 1px solid var(--stage-rule);
+  border-radius: 7px; padding: 9px 12px; max-width: 260px;
+  color: var(--stage-ink); font-size: 12.5px; line-height: 1.45;
+  box-shadow: 0 8px 24px -8px rgba(0,0,0,.7);
+}
+.flow-tip b { font-family: var(--figure); font-variant-numeric: tabular-nums; }
+.flow-tip .sub { display: block; color: var(--stage-mid); font-size: 11.5px; margin-top: 4px; }
+
+.stage-foot {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 16px; flex-wrap: wrap;
+  margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--stage-rule);
+  color: var(--stage-mid); font-size: 12.5px;
+}
+.stage-foot b { color: var(--stage-ink); font-family: var(--figure);
+                font-variant-numeric: tabular-nums; font-weight: 600; }
+.stage-foot .clear {
+  font: inherit; font-size: 12.5px; background: none; cursor: pointer;
+  color: var(--sa-1); border: 0; border-bottom: 1px solid currentColor; padding: 0 0 1px;
+}
+
+/* Below 720px a fourteen-node diagram is unreadable, so the same numbers are
+   told as three stacked steps instead. Nothing is dropped. */
+.flow-steps { display: flex; flex-direction: column; gap: 22px; }
+.fstep-head { color: var(--stage-soft); font-size: 11.5px; font-weight: 600;
+              margin-bottom: 10px; }
+.frow {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--stage-rule); cursor: pointer;
+  align-items: baseline;
+}
+.flow-steps .fstep:last-child .frow:last-child { border-bottom: 0; }
+.frow .fname { color: var(--stage-ink); font-size: 13px; font-weight: 600; }
+.frow .fval { color: var(--stage-mid); font-size: 12.5px; font-family: var(--figure);
+              font-variant-numeric: tabular-nums; }
+.frow .ftrack { grid-column: 1 / -1; height: 8px; border-radius: 4px;
+                background: var(--stage-2); overflow: hidden; }
+.frow .ftrack span { display: block; height: 100%; transition: width .4s ease; }
+
 /* ------------------------------------------------------------ the storm --- */
 .storm {
   border: 1px solid var(--rule); border-radius: 8px; overflow: hidden;
@@ -666,17 +780,28 @@ table.data .read.HIGH { color: var(--lost); }
 
     <p class="voice" id="thesis">Loading this batch&hellip;</p>
 
-    <div class="moneybar">
-      <div class="track" id="moneytrack"></div>
-      <div class="keys" id="moneykeys"></div>
-    </div>
-
     <button class="disc" data-panel="p-revenue" aria-expanded="false" aria-controls="p-revenue">
       <span class="caret"></span>Show the numbers behind this</button>
     <div class="disc-panel" id="p-revenue" hidden></div>
   </section>
 
-  <!-- 2. What needs you: the merchant's front door to every technical panel -->
+  <!-- 2. The money flow: the whole system in one picture ----------------- -->
+  <section class="band" aria-labelledby="flow-h">
+    <div class="band-head"><h2 id="flow-h">Where your money went</h2>
+      <span class="band-note">Select any block to see those payments</span></div>
+    <div class="stage">
+      <p class="stage-key">Read left to right: the money that failed, why it
+        failed, what Verdict did about it, and where it ended up.
+        <b id="flow-key-b">The thicker the ribbon, the more money.</b></p>
+      <div class="flow-wrap" id="flow-wrap"></div>
+      <div class="stage-foot" id="stage-foot"></div>
+    </div>
+    <button class="disc" data-panel="p-flow" aria-expanded="false" aria-controls="p-flow">
+      <span class="caret"></span>Show the numbers behind this</button>
+    <div class="disc-panel" id="p-flow" hidden></div>
+  </section>
+
+  <!-- 3. What needs you: the merchant's front door to every technical panel -->
   <section class="band" aria-labelledby="needs-h">
     <div class="band-head"><h2 id="needs-h">What needs you</h2>
       <span class="band-note">Everything else is handled</span></div>
@@ -685,10 +810,12 @@ table.data .read.HIGH { color: var(--lost); }
     <div id="p-fraud-host"></div>
   </section>
 
-  <!-- 3. Why the payments failed ---------------------------------------- -->
+  <!-- 4. Cards and UPI, which the flow above deliberately does not split - -->
   <section class="band" aria-labelledby="why-h">
-    <div class="band-head"><h2 id="why-h">Why the payments failed</h2></div>
-    <p class="voice">Cards and UPI fail for different reasons, so Verdict treats
+    <div class="band-head"><h2 id="why-h">Cards and UPI fail differently</h2>
+      <span class="band-note">By number of payments, not by value</span></div>
+    <p class="voice">The flow above follows the money. This follows the rails:
+      cards and UPI fail for structurally different reasons, so Verdict treats
       them as two different problems rather than one failure rate.</p>
     <div class="bars" id="reasons"></div>
     <div class="railkey">
@@ -699,18 +826,6 @@ table.data .read.HIGH { color: var(--lost); }
     <button class="disc" data-panel="p-reasons" aria-expanded="false" aria-controls="p-reasons">
       <span class="caret"></span>How we tell these apart</button>
     <div class="disc-panel" id="p-reasons" hidden></div>
-  </section>
-
-  <!-- 4. What we did about it -------------------------------------------- -->
-  <section class="band" aria-labelledby="did-h">
-    <div class="band-head"><h2 id="did-h">What we did about it</h2></div>
-    <p class="voice">Each payment gets the response its failure actually calls for.
-      A bank timeout wants another attempt; a customer who walked away wants a
-      reminder; a permanent decline wants to be left alone.</p>
-    <div class="bars" id="outcomes"></div>
-    <button class="disc" data-panel="p-outcomes" aria-expanded="false" aria-controls="p-outcomes">
-      <span class="caret"></span>How we decide</button>
-    <div class="disc-panel" id="p-outcomes" hidden></div>
   </section>
 
   <!-- 5. The retry storm ------------------------------------------------- -->
@@ -896,6 +1011,7 @@ let ROWS = [];       // the currently filtered ledger rows
    sample size passed to /simulate/seed. */
 let CHOICE = "demo";
 let THRESHOLDS = { auto_retry_at: 0.5, give_up_below: 0.25 };
+let LAST_BREAKDOWN = null;   // kept so a resize can redraw the flow in its other form
 
 /* The stats bands already summarise the whole batch. The ledger is for reading
    individual decisions, so it is capped -- 1,000 rows each with a hidden detail
@@ -973,22 +1089,6 @@ function renderVerdict(rev) {
     : "This batch has no recorded outcomes, so the figure above is what the model "
       + "expects to recover rather than what came back.";
 
-  // Where the failed money actually went: recovered, tried but lost, unrecoverable.
-  const lostAfterTrying = Math.max(actedVal - (hasReal ? got : 0), 0);
-  const untouched = Math.max(total - actedVal, 0);
-  const w = v => total > 0 ? (v / total) * 100 : 0;
-  el("moneytrack").innerHTML =
-      '<span style="width:' + w(hasReal ? got : 0) + '%;background:var(--recovered)"></span>'
-    + '<span style="width:' + w(lostAfterTrying) + '%;background:var(--act-3)"></span>'
-    + '<span style="width:' + w(untouched) + '%;background:var(--rule-strong)"></span>';
-  el("moneykeys").innerHTML = [
-    ['var(--recovered)', "Recovered", inr(hasReal ? got : 0)],
-    ['var(--act-3)', "Tried, did not come back", inr(lostAfterTrying)],
-    ['var(--rule-strong)', "Nothing would have worked", inr(untouched)],
-  ].map(([c, k, v]) =>
-    '<span class="key"><i style="background:' + c + '"></i>' + k + " <b>" + v + "</b></span>"
-  ).join("");
-
   const over = (rev.expected_recovered_value || 0) - (hasReal ? got : 0);
   el("p-revenue").innerHTML =
     kvRows([
@@ -1010,6 +1110,467 @@ function renderVerdict(rev) {
     + "<p>These are held-out payments &mdash; the models never saw them while "
       + "learning. The predicted figure is shown next to the real one so the "
       + "estimate can be checked rather than taken on trust.</p>";
+}
+
+/* ================================================ 2. the money flow ===== */
+/* One picture of the whole system: failed money on the left, why it failed,
+   what Verdict did, where it ended up. Ribbon thickness is rupees throughout.
+   Hand-rolled rather than pulled from a charting library, because the page may
+   not reference anything external -- and this is a fixed 1-4-5-4 graph, so the
+   layout is arithmetic, not a dependency. */
+
+const FLOW_W = 1180, FLOW_H = 560;
+const COL_X = [30, 330, 680, 1010];   // left edge of each column's node bar
+const BAR_W = 13;
+const FLOW_TOP = 62, FLOW_BOTTOM = 534;
+const FLOW_GAP = 14;
+
+/* Reasons are ordered for the DIAGRAM, not for the bands elsewhere: this order
+   sits each reason beside the actions it mostly flows into, so the ribbons read
+   as four broad currents instead of a knot of crossings. */
+const FLOW_REASONS = ["soft_decline", "customer_dropoff", "hard_decline", "fraud_block"];
+const FLOW_ACTIONS = OUTCOME_ORDER;
+const FLOW_ENDS = ["recovered", "lost", "waiting", "none"];
+
+const STAGE_REASON = { soft_decline: "var(--sr-soft)", customer_dropoff: "var(--sr-drop)",
+                       hard_decline: "var(--sr-hard)", fraud_block: "var(--sr-fraud)" };
+const STAGE_ACTION = { auto_retry_now: "var(--sa-1)", retry_later: "var(--sa-2)",
+                       customer_nudge: "var(--sa-3)", escalate: "var(--sa-4)",
+                       no_action: "var(--sa-5)" };
+const END_META = {
+  recovered: { name: "Recovered", colour: "var(--so-win)", phrase: "came back" },
+  lost: { name: "Tried, didn’t come back", colour: "var(--so-lost)",
+          phrase: "did not come back" },
+  waiting: { name: "Waiting on you", colour: "var(--so-wait)",
+             phrase: "is waiting on your call" },
+  none: { name: "Not pursued", colour: "var(--so-none)", phrase: "was left alone" },
+};
+
+/* Nouns and verbs, so a tooltip can write a sentence instead of a label pair. */
+const REASON_NOUN = {
+  hard_decline: "permanent declines", soft_decline: "temporary glitches",
+  customer_dropoff: "walked-away payments", fraud_block: "fraud blocks",
+};
+const ACTION_VERB = {
+  auto_retry_now: "retried straight away", retry_later: "queued for a later retry",
+  customer_nudge: "sent a customer nudge", escalate: "sent to you to decide",
+  no_action: "left alone",
+};
+
+/* Which outcome a payment ended in. Mirrors the agent's own action semantics:
+   the three acting actions can recover, escalate parks with a human, and
+   no_action is the deliberate, measured write-off. */
+function endOf(d) {
+  if (d.action === "escalate") return "waiting";
+  if (d.action === "no_action") return "none";
+  return d.retry_success ? "recovered" : "lost";
+}
+
+function buildFlow(rows) {
+  const f = { total: 0, n1: {}, n2: {}, n3: {}, l01: {}, l12: {}, l23: {} };
+  for (const d of rows) {
+    const amt = Number(d.amount) || 0;
+    const r = d.predicted_category, a = d.action, e = endOf(d);
+    f.total += amt;
+    f.n1[r] = (f.n1[r] || 0) + amt;
+    f.n2[a] = (f.n2[a] || 0) + amt;
+    f.n3[e] = (f.n3[e] || 0) + amt;
+    f.l01[r] = (f.l01[r] || 0) + amt;
+    f.l12[r + ">" + a] = (f.l12[r + ">" + a] || 0) + amt;
+    f.l23[a + ">" + e] = (f.l23[a + ">" + e] || 0) + amt;
+  }
+  return f;
+}
+
+/* One scale across every column, so a ribbon keeps the same thickness at both
+   ends instead of tapering into a wedge. */
+function layoutFlow(f) {
+  const H = FLOW_BOTTOM - FLOW_TOP;
+  const worstGaps = (FLOW_ACTIONS.length - 1) * FLOW_GAP;
+  const scale = f.total > 0 ? (H - worstGaps) / f.total : 0;
+  const floor = f.total * 0.0004;   // keeps a tween from flickering nodes on and off
+
+  const column = (keys, values, x) => {
+    const live = keys.filter(k => (values[k] || 0) > floor);
+    const stack = live.reduce((sum, k) => sum + values[k] * scale, 0)
+                + Math.max(0, live.length - 1) * FLOW_GAP;
+    let y = FLOW_TOP + (H - stack) / 2;
+    const out = { order: live };
+    for (const k of live) {
+      out[k] = { x: x, y: y, h: values[k] * scale, v: values[k] };
+      y += values[k] * scale + FLOW_GAP;
+    }
+    return out;
+  };
+
+  return {
+    c0: column(["all"], { all: f.total }, COL_X[0]),
+    c1: column(FLOW_REASONS, f.n1, COL_X[1]),
+    c2: column(FLOW_ACTIONS, f.n2, COL_X[2]),
+    c3: column(FLOW_ENDS, f.n3, COL_X[3]),
+  };
+}
+
+function ribbonPath(x0, y0, x1, y1, h) {
+  const xm = (x0 + x1) / 2;
+  return "M" + x0 + "," + y0
+    + " C" + xm + "," + y0 + " " + xm + "," + y1 + " " + x1 + "," + y1
+    + " L" + x1 + "," + (y1 + h)
+    + " C" + xm + "," + (y1 + h) + " " + xm + "," + (y0 + h) + " " + x0 + "," + (y0 + h) + " Z";
+}
+
+/* ---------------------------------------------------------------- drawing --- */
+function drawFlow(f) {
+  const L = layoutFlow(f);
+  const unit = f.total > 0
+    ? (FLOW_BOTTOM - FLOW_TOP - (FLOW_ACTIONS.length - 1) * FLOW_GAP) / f.total : 0;
+  const floor = f.total * 0.0004;
+  const ribbons = [], nodes = [];
+  const share = (v, of) => of > 0 ? Math.round((v / of) * 100) + "%" : "0%";
+
+  /* Stage 0 to 1. Cursors track how much of each node's edge is already spoken
+     for, so ribbons stack against it instead of overlapping. */
+  let srcY = L.c0.all ? L.c0.all.y : 0;
+  for (const r of L.c1.order) {
+    const v = f.l01[r] || 0, h = L.c1[r].h;
+    ribbons.push({
+      d: ribbonPath(L.c0.all.x + BAR_W, srcY, L.c1[r].x, L.c1[r].y, h),
+      colour: STAGE_REASON[r], from: "all", to: r,
+      tip: "<b>" + inr(v) + "</b> failed because " + reasonOf(r).name.toLowerCase() + "."
+         + '<span class="sub">' + share(v, f.total) + " of everything that failed.</span>"
+    });
+    srcY += h;
+  }
+
+  /* Stage 1 to 2. Reasons outer, actions inner, so each action's incoming edge
+     stacks in the same top-to-bottom order the reasons appear in. */
+  const outA = {}, inA = {};
+  for (const r of L.c1.order) outA[r] = L.c1[r].y;
+  for (const a of L.c2.order) inA[a] = L.c2[a].y;
+  for (const r of L.c1.order) {
+    for (const a of L.c2.order) {
+      const v = f.l12[r + ">" + a] || 0;
+      if (v <= floor) continue;
+      const h = v * unit;
+      ribbons.push({
+        d: ribbonPath(L.c1[r].x + BAR_W, outA[r], L.c2[a].x, inA[a], h),
+        colour: STAGE_REASON[r], from: r, to: a,
+        tip: "<b>" + inr(v) + "</b> of " + REASON_NOUN[r] + " were " + ACTION_VERB[a] + "."
+           + '<span class="sub">' + share(v, f.n1[r]) + " of that reason.</span>"
+      });
+      outA[r] += h; inA[a] += h;
+    }
+  }
+
+  /* Stage 2 to 3. */
+  const outB = {}, inB = {};
+  for (const a of L.c2.order) outB[a] = L.c2[a].y;
+  for (const e of L.c3.order) inB[e] = L.c3[e].y;
+  for (const a of L.c2.order) {
+    for (const e of L.c3.order) {
+      const v = f.l23[a + ">" + e] || 0;
+      if (v <= floor) continue;
+      const h = v * unit;
+      ribbons.push({
+        d: ribbonPath(L.c2[a].x + BAR_W, outB[a], L.c3[e].x, inB[e], h),
+        colour: END_META[e].colour, from: a, to: e,
+        tip: "<b>" + inr(v) + "</b> of what we " + ACTION_VERB[a] + " "
+           + END_META[e].phrase + "."
+           + '<span class="sub">' + share(v, f.n2[a]) + " of that action.</span>"
+      });
+      outB[a] += h; inB[e] += h;
+    }
+  }
+
+  const node = (key, box, label, colour, tip, filter) =>
+    nodes.push({ key: key, box: box, label: label, colour: colour, tip: tip, filter: filter });
+
+  if (L.c0.all) {
+    node("all", L.c0.all, "Failed payments", "var(--stage-mid)",
+      "<b>" + inr(f.total) + "</b> of payments failed in this batch.", null);
+  }
+  for (const r of L.c1.order) {
+    node(r, L.c1[r], reasonOf(r).short, STAGE_REASON[r],
+      "<b>" + inr(f.n1[r]) + "</b> — " + reasonOf(r).name + "."
+      + '<span class="sub">' + share(f.n1[r], f.total)
+      + " of the failed money. Select to see these payments.</span>",
+      { kind: "cat", value: r });
+  }
+  for (const a of L.c2.order) {
+    node(a, L.c2[a], outcomeOf(a).short, STAGE_ACTION[a],
+      "<b>" + inr(f.n2[a]) + "</b> — " + outcomeOf(a).name + "."
+      + '<span class="sub">' + share(f.n2[a], f.total)
+      + " of the failed money. Select to see these payments.</span>",
+      { kind: "action", value: a });
+  }
+  for (const e of L.c3.order) {
+    node(e, L.c3[e], END_META[e].name, END_META[e].colour,
+      "<b>" + inr(f.n3[e]) + "</b> " + END_META[e].phrase + "."
+      + '<span class="sub">' + share(f.n3[e], f.total) + " of the failed money.</span>",
+      null);
+  }
+
+  const heads = ["Failed", "Why it failed", "What we did", "Where it ended up"]
+    .map((t, i) => '<text class="colhead" x="' + COL_X[i] + '" y="34">' + t + "</text>")
+    .join("");
+
+  const svg =
+    '<svg class="flow-svg" viewBox="0 0 ' + FLOW_W + " " + FLOW_H + '" role="img" '
+    + 'aria-label="Money flow from failed payments, through why they failed and what '
+    + 'Verdict did, to where the money ended up">'
+    + heads
+    + '<g class="ribbons">' + ribbons.map((rb, i) =>
+        '<path class="ribbon" d="' + rb.d + '" fill="' + rb.colour + '" data-i="' + i
+        + '" data-from="' + rb.from + '" data-to="' + rb.to + '"></path>').join("")
+    + "</g>"
+    + '<g class="nodes">' + nodes.map((nd, i) => {
+        const labX = nd.box.x + BAR_W + 10;
+        const mid = nd.box.y + nd.box.h / 2;
+        return '<g class="node" data-i="' + i + '" data-key="' + nd.key + '"'
+          + (nd.filter ? ' tabindex="0" role="button"' : ' role="img"')
+          + ' aria-label="' + esc(nd.label + ", " + inr(nd.box.v)) + '">'
+          + '<rect x="' + nd.box.x + '" y="' + nd.box.y + '" width="' + BAR_W
+          + '" height="' + Math.max(nd.box.h, 1) + '" fill="' + nd.colour + '"></rect>'
+          + '<text class="lab" x="' + labX + '" y="' + (mid - 2) + '">'
+          + esc(nd.label) + "</text>"
+          + '<text class="amt-t" x="' + labX + '" y="' + (mid + 14) + '">'
+          + inr(nd.box.v) + "</text>"
+          + "</g>";
+      }).join("") + "</g>"
+    + "</svg>";
+
+  const wrap = el("flow-wrap");
+  const first = !wrap.querySelector("svg");
+  wrap.innerHTML = svg + '<div class="flow-tip" id="flow-tip" hidden></div>';
+  if (first) wrap.querySelector("svg").classList.add("reveal");
+  wireFlow(wrap.querySelector("svg"), ribbons, nodes);
+}
+
+function wireFlow(svg, ribbons, nodes) {
+  const tip = el("flow-tip"), wrap = el("flow-wrap");
+  const paths = svg.querySelectorAll(".ribbon");
+  const groups = svg.querySelectorAll(".node");
+
+  const clear = () => {
+    svg.classList.remove("probing");
+    paths.forEach(q => q.classList.remove("lit"));
+    groups.forEach(g => g.classList.remove("lit"));
+    tip.hidden = true;
+  };
+
+  const place = ev => {
+    const box = wrap.getBoundingClientRect();
+    tip.hidden = false;
+    let x = ev.clientX - box.left + 16, y = ev.clientY - box.top + 16;
+    // Keep the tip inside the stage rather than letting it widen the page.
+    if (x + tip.offsetWidth > box.width) x = box.width - tip.offsetWidth - 4;
+    if (y + tip.offsetHeight > box.height) y = ev.clientY - box.top - tip.offsetHeight - 12;
+    tip.style.left = Math.max(0, x) + "px";
+    tip.style.top = Math.max(0, y) + "px";
+  };
+
+  paths.forEach(pth => {
+    const rb = ribbons[+pth.dataset.i];
+    pth.addEventListener("mousemove", ev => {
+      svg.classList.add("probing");
+      paths.forEach(q => q.classList.toggle("lit", q === pth));
+      groups.forEach(g => g.classList.toggle("lit",
+        g.dataset.key === rb.from || g.dataset.key === rb.to));
+      tip.innerHTML = rb.tip;
+      place(ev);
+    });
+  });
+
+  groups.forEach(g => {
+    const nd = nodes[+g.dataset.i];
+    const light = () => {
+      svg.classList.add("probing");
+      paths.forEach(q => q.classList.toggle("lit",
+        q.dataset.from === nd.key || q.dataset.to === nd.key));
+      groups.forEach(o => o.classList.toggle("lit", o === g));
+    };
+    g.addEventListener("mousemove", ev => { light(); tip.innerHTML = nd.tip; place(ev); });
+    g.addEventListener("focus", light);
+    g.addEventListener("blur", clear);
+    if (nd.filter) {
+      g.addEventListener("click", () => applyFlowFilter(nd.filter));
+      g.addEventListener("keydown", ev => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          applyFlowFilter(nd.filter);
+        }
+      });
+    }
+  });
+
+  svg.addEventListener("mouseleave", clear);
+}
+
+/* Selecting a block drives the ledger's existing filters. No second filtering
+   path, so the diagram and the table can never disagree about what they show. */
+function applyFlowFilter(f) {
+  el("f-cat").value = f.kind === "cat" ? f.value : "";
+  el("f-action").value = f.kind === "action" ? f.value : "";
+  renderLedger();
+  el("ledger-h").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* ------------------------------------------------------------- animation --- */
+/* Switching batches tweens the underlying rupee values and recomputes the paths
+   each frame, so the ribbons swell and shrink instead of snapping. Picking the
+   shifted batch visibly thickens the fraud and UPI currents -- drift as motion,
+   which is the one thing a static chart cannot show. */
+let FLOW_NOW = null;
+let FLOW_RAF = 0;
+
+function lerpFlow(a, b, t) {
+  const mix = (x, y) => {
+    const out = {};
+    for (const k of Object.keys(x)) out[k] = x[k] + ((y[k] || 0) - x[k]) * t;
+    for (const k of Object.keys(y)) if (!(k in out)) out[k] = (y[k] || 0) * t;
+    return out;
+  };
+  return {
+    total: a.total + (b.total - a.total) * t,
+    n1: mix(a.n1, b.n1), n2: mix(a.n2, b.n2), n3: mix(a.n3, b.n3),
+    l01: mix(a.l01, b.l01), l12: mix(a.l12, b.l12), l23: mix(a.l23, b.l23)
+  };
+}
+
+function tweenFlow(target) {
+  const still = (window.matchMedia
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+    || document.hidden;   // a backgrounded tab stops firing frames entirely
+  if (FLOW_RAF) { cancelAnimationFrame(FLOW_RAF); FLOW_RAF = 0; }
+
+  // FLOW_NOW is the data the flow IS showing, so it is assigned up front rather
+  // than when the animation happens to end. If frames stop mid-tween -- the tab
+  // is backgrounded, the compositor stalls -- the next tween still starts from
+  // the right baseline instead of an abandoned intermediate one.
+  const from = FLOW_NOW;
+  FLOW_NOW = target;
+
+  if (still || !from || from.total <= 0) { drawFlow(target); return; }
+
+  const start = performance.now(), DUR = 700;
+  const step = now => {
+    const t = Math.min((now - start) / DUR, 1);
+    if (t >= 1) { FLOW_RAF = 0; drawFlow(target); return; }  // final frame is exact
+    drawFlow(lerpFlow(from, target, 1 - Math.pow(1 - t, 3)));
+    FLOW_RAF = requestAnimationFrame(step);
+  };
+  FLOW_RAF = requestAnimationFrame(step);
+}
+
+/* Below 720px a fourteen-node diagram is unreadable, so the same numbers are
+   told as three stacked steps. Same labels, same colours, same rupees, same
+   click-to-filter -- nothing is only available on a big screen. */
+function drawFlowStacked(f) {
+  const step = (head, keys, values, colours, labels, filterKind) => {
+    const max = Math.max.apply(null, keys.map(k => values[k] || 0).concat([1]));
+    return '<div class="fstep"><div class="fstep-head">' + head + "</div>"
+      + keys.filter(k => (values[k] || 0) > 0).map(k =>
+          '<div class="frow"' + (filterKind ? ' tabindex="0" role="button" data-fk="'
+            + filterKind + '" data-fv="' + k + '"' : "")
+          + '><span class="fname">' + esc(labels(k)) + "</span>"
+          + '<span class="fval">' + inr(values[k]) + "</span>"
+          + '<span class="ftrack"><span style="width:' + ((values[k] / max) * 100)
+          + "%;background:" + colours(k) + '"></span></span></div>').join("")
+      + "</div>";
+  };
+
+  el("flow-wrap").innerHTML = '<div class="flow-steps">'
+    + step("Why it failed", FLOW_REASONS, f.n1, k => STAGE_REASON[k],
+           k => reasonOf(k).short, "cat")
+    + step("What we did", FLOW_ACTIONS, f.n2, k => STAGE_ACTION[k],
+           k => outcomeOf(k).short, "action")
+    + step("Where it ended up", FLOW_ENDS, f.n3, k => END_META[k].colour,
+           k => END_META[k].name, null)
+    + "</div>";
+
+  el("flow-wrap").querySelectorAll(".frow[data-fk]").forEach(row => {
+    const go = () => applyFlowFilter({ kind: row.dataset.fk, value: row.dataset.fv });
+    row.addEventListener("click", go);
+    row.addEventListener("keydown", ev => {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); }
+    });
+  });
+  FLOW_NOW = f;
+}
+
+const isNarrow = () => window.matchMedia
+  && window.matchMedia("(max-width: 720px)").matches;
+
+function renderFlow(rows, rev, brk) {
+  const f = buildFlow(rows);
+  const narrow = isNarrow();
+  // The reading key has to describe the form actually on screen.
+  el("flow-key-b").textContent = narrow
+    ? "The longer the bar, the more money."
+    : "The thicker the ribbon, the more money.";
+  if (narrow) drawFlowStacked(f); else tweenFlow(f);
+  renderStageFoot(f, rev);
+  renderFlowPanel(f, brk);
+}
+
+/* Two figures worth stating under the diagram: the headline, and the one number
+   that proves the fraud rule -- counted from this batch on every run, not
+   asserted. */
+function renderStageFoot(f, rev) {
+  const acting = { auto_retry_now: 1, retry_later: 1, customer_nudge: 1 };
+  const leaked = ALL.filter(d => d.fraud_blocked && acting[d.action])
+    .reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+  el("stage-foot").innerHTML =
+    "<span><b>" + inr(f.total) + "</b> failed here, and <b>"
+      + inr(f.n3.recovered || 0) + "</b> came back.</span>"
+    + "<span>Money blocked as fraud that reached a recovery action: <b>"
+      + inr(leaked) + "</b></span>";
+}
+
+/* The action band used to live on its own. Its numbers, class names, cutoffs
+   and hedging rule all moved here, because the diagram above already draws what
+   its bars were drawing. */
+function renderFlowPanel(f, brk) {
+  const by = (brk && brk.by_action) || {};
+  const acts = FLOW_ACTIONS.filter(a => by[a] != null);
+  const count = acts.reduce((sum, a) => sum + by[a], 0) || 1;
+
+  el("p-flow").innerHTML =
+    "<h4>What we did, by payment and by value</h4>"
+    + '<table class="data"><thead><tr><th>Shown as</th><th>Action</th>'
+      + '<th class="n">Payments</th><th class="n">Share</th><th class="n">Value</th>'
+      + "</tr></thead><tbody>"
+    + acts.map(a => "<tr><td>" + outcomeOf(a).name + '</td><td class="mono">'
+        + outcomeOf(a).technical + '</td><td class="n">' + num(by[a])
+        + '</td><td class="n">' + pct(by[a] / count) + '</td><td class="n">'
+        + inr(f.n2[a] || 0) + "</td></tr>").join("")
+    + "</tbody></table>"
+    + "<h4>Where the money ended up</h4>"
+    + kvRows(FLOW_ENDS.filter(e => (f.n3[e] || 0) > 0)
+        .map(e => [END_META[e].name, inr(f.n3[e])]))
+    + "<h4>The two lines every payment is measured against</h4>"
+    + kvRows([
+        ["Retry straight away, at or above", pct(THRESHOLDS.auto_retry_at, 0) + " odds"],
+        ["Stop trying, below", pct(THRESHOLDS.give_up_below, 0) + " odds"]
+      ])
+    + "<p>Neither number was picked in advance. Both come from the recovery "
+      + "model's measured score distribution on held-out payments: the upper line "
+      + "is where recovery becomes more likely than not, and the lower line sits "
+      + "in the empirical valley between payments worth trying and payments that "
+      + "are gone.</p>"
+    + "<h4>What we do when the model is not sure</h4>"
+    + "<p>Every score carries a range, not just a number. When that range "
+      + "straddles a line, the response changes but the ambition does not: near "
+      + "the upper line we still retry, just with a delay instead of immediately; "
+      + "near the lower line we send the payment to you rather than writing it "
+      + "off silently. Payments in that second group recover several times more "
+      + "often than confident write-offs, which is why they are worth your "
+      + "attention.</p>"
+    + "<h4>Reading the diagram without the diagram</h4>"
+    + "<p>Every ribbon above is money moving from one column to the next. The "
+      + "totals in the tables here are the same figures, so nothing is locked "
+      + "inside a graphic.</p>";
+  wireDisclosures();
 }
 
 /* ================================================= 2. what needs you === */
@@ -1138,53 +1699,6 @@ function renderReasons(b) {
     + kvRows([["Card payments", num(rails.card || 0)], ["UPI payments", num(rails.upi || 0)]])
     + "<p>Because the two rails fail for structurally different reasons, the rail "
       + "itself is a real input to the model rather than a label on a chart.</p>";
-  wireDisclosures();
-}
-
-/* ============================================ 4. what we did about it === */
-function renderOutcomes(b) {
-  const acts = OUTCOME_ORDER.filter(a => (b.by_action || {})[a] != null);
-  const max = Math.max.apply(null, acts.map(a => b.by_action[a]).concat([1]));
-  const total = acts.reduce((s, a) => s + b.by_action[a], 0) || 1;
-
-  el("outcomes").innerHTML = acts.map(a => {
-    const o = outcomeOf(a);
-    const n = b.by_action[a];
-    return '<div class="barrow">'
-      + '<div><span class="name"><span class="dot" style="background:' + o.colour
-        + '"></span>' + o.name + "</span>"
-        + (o.gloss ? '<span class="gloss">' + o.gloss + "</span>" : "") + "</div>"
-      + '<div class="track"><span style="width:' + (n / max) * 100
-        + "%;background:" + o.colour + '"></span></div>'
-      + '<div class="tally"><b>' + num(n) + "</b> payments"
-        + '<span class="split">' + pct(n / total, 0) + " of the batch</span></div>"
-      + "</div>";
-  }).join("");
-
-  el("p-outcomes").innerHTML =
-    "<h4>The two lines every payment is measured against</h4>"
-    + kvRows([
-        ["Retry straight away, at or above", pct(THRESHOLDS.auto_retry_at, 0) + " odds"],
-        ["Stop trying, below", pct(THRESHOLDS.give_up_below, 0) + " odds"],
-      ])
-    + "<p>Neither number was picked in advance. Both come from the recovery model's "
-      + "measured score distribution on held-out payments: the upper line is where "
-      + "recovery becomes more likely than not, and the lower line sits in the "
-      + "empirical valley between payments worth trying and payments that are gone.</p>"
-    + "<h4>What we do when the model is not sure</h4>"
-    + "<p>Every score carries a range, not just a number. When that range straddles "
-      + "a line, the response changes but the ambition does not: near the upper line "
-      + "we still retry, just with a delay instead of immediately; near the lower "
-      + "line we send the payment to you rather than writing it off silently. "
-      + "Payments in that second group recover several times more often than "
-      + "confident write-offs, which is why they are worth your attention.</p>"
-    + "<h4>Class names, for the record</h4>"
-    + '<table class="data"><thead><tr><th>Shown as</th><th>Action</th>'
-      + '<th class="n">Count</th><th class="n">Share</th></tr></thead><tbody>'
-    + acts.map(a => "<tr><td>" + outcomeOf(a).name + '</td><td class="mono">'
-        + outcomeOf(a).technical + '</td><td class="n">' + num(b.by_action[a])
-        + '</td><td class="n">' + pct(b.by_action[a] / total) + "</td></tr>").join("")
-    + "</tbody></table>";
   wireDisclosures();
 }
 
@@ -1690,12 +2204,13 @@ async function run() {
       getJSON("/decisions?limit=" + FEED_LIMIT),
     ]);
     const rev = results[0], brk = results[1], feed = results[2];
+    LAST_BREAKDOWN = brk;
 
     renderVerdict(rev);
+    renderFlow(ALL, rev, brk);
     renderAttention();
     loadShift(constructed);      // read-only; a failure here must not break the page
     renderReasons(brk);
-    renderOutcomes(brk);
 
     FEED = feed.decisions || [];
     FEED_TOTAL = feed.total || FEED.length;
@@ -1756,6 +2271,21 @@ el("f-action").addEventListener("change", renderLedger);
 el("f-cat").addEventListener("change", renderLedger);
 el("f-clear").addEventListener("click", () => {
   el("f-action").value = ""; el("f-cat").value = ""; renderLedger();
+});
+
+/* The flow has two forms either side of 720px, so a resize across that line has
+   to redraw it. Debounced -- a drag would otherwise rebuild the SVG per frame. */
+let FLOW_WAS_NARROW = isNarrow();
+let RESIZE_T = 0;
+window.addEventListener("resize", () => {
+  clearTimeout(RESIZE_T);
+  RESIZE_T = setTimeout(() => {
+    const narrow = isNarrow();
+    if (narrow === FLOW_WAS_NARROW || !ALL.length) return;
+    FLOW_WAS_NARROW = narrow;
+    FLOW_NOW = null;
+    renderFlow(ALL, null, LAST_BREAKDOWN);
+  }, 180);
 });
 
 wireDisclosures();
