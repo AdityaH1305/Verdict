@@ -159,26 +159,26 @@ a { color: var(--indigo); }
   border-radius: 3px;
 }
 
-.sheetwrap { max-width: 1120px; margin: 0 auto; padding: 0 24px 96px; }
+.sheetwrap { max-width: 1120px; margin: 0 auto; padding: 0 24px 120px; }
 
 /* Numerals line up everywhere they are read in a column. */
 .fig { font-family: var(--figure); font-variant-numeric: tabular-nums; }
 .mono { font-family: var(--code); font-size: .86em; letter-spacing: -.01em; }
 .voice {
   font-family: var(--voice);
-  font-size: 16px; line-height: 1.62; color: var(--ink-mid);
+  font-size: 16px; line-height: 1.7; color: var(--ink-mid);
   max-width: 62ch; margin: 0;
 }
 .voice strong { color: var(--ink); font-weight: 600; }
 
 /* Band = a ruled section of the statement. Flat on paper, hairline above.
    Deliberately NOT a card: no radius, no shadow, no fill. */
-.band { border-top: 1px solid var(--rule); padding: 40px 0 6px; }
+.band { border-top: 1px solid var(--rule); padding: 64px 0 12px; }
 .band-head { display: flex; align-items: baseline; justify-content: space-between;
-             gap: 20px; flex-wrap: wrap; margin-bottom: 6px; }
+             gap: 20px; flex-wrap: wrap; margin-bottom: 14px; }
 .band-head h2 { font-size: 19px; font-weight: 600; letter-spacing: -.012em; }
 .band-note { color: var(--ink-soft); font-size: 12.5px; }
-.band > .voice { margin: 12px 0 26px; }
+.band > .voice { margin: 14px 0 34px; }
 
 /* -------------------------------------------------------------- masthead --- */
 .masthead {
@@ -285,11 +285,11 @@ select:hover:not(:disabled), .btn:hover:not(:disabled) { border-color: var(--ind
 .settlement {
   background: var(--sheet); border: 1px solid var(--rule);
   border-radius: 10px; box-shadow: var(--lift);
-  padding: 34px 34px 28px; margin-top: 18px;
+  padding: 36px 36px 30px; margin-top: 26px;
 }
 .verdict-figures {
   display: grid; gap: 28px 44px;
-  grid-template-columns: minmax(200px, auto) repeat(auto-fit, minmax(110px, max-content));
+  grid-template-columns: minmax(200px, auto) repeat(auto-fit, minmax(105px, max-content));
   align-items: end;
 }
 .verdict-figures > * { min-width: 0; }
@@ -301,9 +301,10 @@ select:hover:not(:disabled), .btn:hover:not(:disabled) { border-color: var(--ind
 .hero-label { color: var(--ink-mid); font-size: 13.5px; margin-top: 10px; }
 .sub-fig .v {
   font-family: var(--figure); font-variant-numeric: tabular-nums;
-  font-size: 22px; font-weight: 600; letter-spacing: -.015em; line-height: 1.1;
+  font-size: 17px; font-weight: 600; letter-spacing: -.01em; line-height: 1.15;
+  color: var(--ink-mid);
 }
-.sub-fig .k { color: var(--ink-soft); font-size: 12.5px; margin-top: 5px; }
+.sub-fig .k { color: var(--ink-soft); font-size: 12px; margin-top: 4px; }
 
 .settlement .voice { margin: 26px 0 0; padding-top: 22px; border-top: 1px solid var(--rule); }
 
@@ -332,7 +333,7 @@ select:hover:not(:disabled), .btn:hover:not(:disabled) { border-color: var(--ind
 /* One device, used everywhere the technical layer is available on demand. */
 .disc {
   font: inherit; font-size: 13px; font-weight: 500;
-  background: none; border: 0; padding: 8px 0; margin-top: 18px;
+  background: none; border: 0; padding: 8px 0; margin-top: 28px;
   color: var(--indigo); cursor: pointer;
   display: inline-flex; align-items: center; gap: 7px;
   border-bottom: 1px solid var(--indigo-line);
@@ -346,21 +347,22 @@ select:hover:not(:disabled), .btn:hover:not(:disabled) { border-color: var(--ind
 }
 .disc[aria-expanded="true"] .caret { transform: rotate(-180deg); }
 .disc-panel {
-  margin-top: 14px; padding: 20px 22px;
+  margin-top: 16px; padding: 26px 28px;
   background: var(--sunk); border: 1px solid var(--rule); border-radius: 8px;
 }
 .disc-panel > :first-child { margin-top: 0; }
 .disc-panel h4 {
   font-size: 12.5px; font-weight: 600; color: var(--ink);
-  margin: 20px 0 8px;
+  margin: 28px 0 10px;
 }
-.disc-panel p { color: var(--ink-mid); font-size: 13px; margin: 0 0 10px; max-width: 72ch; }
+.disc-panel p { color: var(--ink-mid); font-size: 13px; line-height: 1.65;
+                margin: 0 0 12px; max-width: 72ch; }
 .disc-panel p:last-child { margin-bottom: 0; }
 
 /* Key/value rows inside a disclosure: a small ledger of its own. */
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 0; }
 .kv div {
-  padding: 8px 0; border-bottom: 1px solid var(--rule);
+  padding: 10px 0; border-bottom: 1px solid var(--rule);
   font-size: 13px; color: var(--ink-mid);
 }
 .kv div:nth-child(even) {
@@ -378,7 +380,7 @@ select:hover:not(:disabled), .btn:hover:not(:disabled) { border-color: var(--ind
   background: var(--sheet);
 }
 .att {
-  padding: 20px 22px 22px; border-right: 1px solid var(--rule);
+  padding: 24px 26px 26px; border-right: 1px solid var(--rule);
   border-top: 3px solid var(--ink-soft);
   display: flex; flex-direction: column; gap: 8px;
 }
@@ -410,8 +412,8 @@ select:hover:not(:disabled), .btn:hover:not(:disabled) { border-color: var(--ind
 .bars { display: flex; flex-direction: column; }
 .barrow {
   display: grid; grid-template-columns: minmax(190px, 250px) 1fr minmax(150px, auto);
-  gap: 8px 20px; align-items: center;
-  padding: 13px 0; border-bottom: 1px solid var(--rule);
+  gap: 8px 24px; align-items: center;
+  padding: 16px 0; border-bottom: 1px solid var(--rule);
 }
 .bars .barrow:last-child { border-bottom: 0; }
 .barrow .name { display: block; font-size: 14.5px; font-weight: 600;
@@ -521,6 +523,60 @@ select:hover:not(:disabled), .btn:hover:not(:disabled) { border-color: var(--ind
                 background: var(--stage-2); overflow: hidden; }
 .frow .ftrack span { display: block; height: 100%; transition: width .4s ease; }
 
+/* ----------------------------------------------------- policy comparison --- */
+.assume {
+  font-size: 12.5px; color: var(--ink-mid);
+  border: 1px solid var(--rule); border-radius: 5px;
+  padding: 4px 10px; background: var(--sheet); white-space: nowrap;
+}
+.assume b { color: var(--ink); font-family: var(--figure);
+            font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.policy-scroll { overflow-x: auto; }
+table.policy { width: 100%; border-collapse: collapse; min-width: 620px; }
+table.policy th {
+  text-align: right; font-size: 12px; font-weight: 600; color: var(--ink-mid);
+  padding: 0 14px 9px 0; border-bottom: 1px solid var(--rule-strong);
+  vertical-align: bottom;
+}
+table.policy th:first-child, table.policy td:first-child { text-align: left; padding-left: 14px; }
+table.policy td {
+  text-align: right; padding: 13px 14px 13px 0;
+  border-bottom: 1px solid var(--rule); font-size: 13.5px;
+  font-family: var(--figure); font-variant-numeric: tabular-nums;
+}
+table.policy td:first-child { font-family: var(--text); }
+table.policy tbody tr:last-child td { border-bottom: 0; }
+table.policy .what { font-weight: 600; }
+table.policy .what small { display: block; font-weight: 400; color: var(--ink-soft);
+                           font-size: 12px; margin-top: 2px; font-family: var(--text); }
+/* Verdict's row is marked, not amplified: a rule and a weight, no fill. */
+table.policy tr.mine td { background: var(--indigo-soft); }
+table.policy tr.mine td:first-child { box-shadow: inset 3px 0 0 var(--indigo); }
+table.policy tr.mine .what { color: var(--indigo); }
+
+.chart-wrap { overflow-x: auto; margin-top: 30px; }
+.chart-svg { display: block; width: 100%; min-width: 560px; height: auto; }
+.chart-svg .grid { stroke: var(--rule); stroke-width: 1; }
+.chart-svg .zero { stroke: var(--rule-strong); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart-svg .axis { fill: var(--ink-soft); font-size: 11px; font-family: var(--figure); }
+.chart-svg .line { fill: none; stroke-width: 2; }
+.chart-svg .name { font-size: 11.5px; font-weight: 600; paint-order: stroke fill;
+                   stroke: var(--paper); stroke-width: 3px; stroke-linejoin: round; }
+.chart-svg .xmark { stroke: var(--ink-mid); stroke-width: 1; stroke-dasharray: 2 3; }
+.chart-svg .xnote { fill: var(--ink); font-size: 11.5px; font-weight: 600;
+                    paint-order: stroke fill; stroke: var(--paper); stroke-width: 3.5px;
+                    stroke-linejoin: round; }
+.chart-svg .xnote-sub { fill: var(--ink-mid); font-size: 11px; font-weight: 400;
+                        paint-order: stroke fill; stroke: var(--paper);
+                        stroke-width: 3.5px; stroke-linejoin: round; }
+.chart-svg .dot { stroke: var(--paper); stroke-width: 2; }
+
+.verdict-band {
+  margin-top: 22px; font-size: 13.5px; color: var(--ink-mid); max-width: 74ch;
+}
+.verdict-band b { color: var(--ink); font-weight: 600; }
+
 /* ------------------------------------------------------------ the storm --- */
 .storm {
   border: 1px solid var(--rule); border-radius: 8px; overflow: hidden;
@@ -554,11 +610,16 @@ select:hover:not(:disabled), .btn:hover:not(:disabled) { border-color: var(--ind
 .storm-row .delta.good { color: var(--recovered); }
 .storm-row .bar { height: 5px; border-radius: 3px; margin-top: 6px; transition: width .4s ease; }
 
+/* One container, so the table and the cost it implies read as a single
+   argument instead of two competing blocks. */
+.storm-group { border: 1px solid var(--rule); border-radius: 8px; overflow: hidden;
+               background: var(--sheet); }
+.storm-group .storm { border: 0; border-radius: 0; }
 .cost {
-  margin-top: 18px; padding: 16px 20px;
-  border: 1px solid var(--rule); border-left: 3px solid var(--watch);
-  border-radius: 0 8px 8px 0; background: var(--watch-soft);
-  font-size: 13.5px; color: var(--ink-mid); max-width: 74ch;
+  padding: 18px 22px; border-top: 1px solid var(--rule);
+  border-left: 3px solid var(--watch);
+  background: var(--watch-soft);
+  font-size: 13.5px; color: var(--ink-mid); max-width: none;
 }
 .cost b { color: var(--ink); font-weight: 600; }
 .cost .h { display: block; color: var(--ink); font-weight: 600; margin-bottom: 5px;
@@ -663,9 +724,9 @@ tr.why > td { padding: 0 !important; background: var(--sunk); }
 table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 table.data th {
   text-align: left; font-weight: 600; color: var(--ink-mid);
-  padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule-strong);
+  padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule-strong);
 }
-table.data td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule);
+table.data td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule);
                 color: var(--ink-mid); }
 table.data td.n { font-family: var(--figure); font-variant-numeric: tabular-nums;
                   color: var(--ink); font-weight: 600; text-align: right;
@@ -677,10 +738,14 @@ table.data .read.HIGH { color: var(--lost); }
 .scale-note { color: var(--ink-soft); font-size: 12px; margin-top: 12px; max-width: 70ch; }
 
 /* --------------------------------------------------------------- footer --- */
-.colophon { display: grid; gap: 26px 34px;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-.colophon h3 { font-size: 13.5px; font-weight: 600; margin: 0 0 8px; }
-.colophon p { color: var(--ink-mid); font-size: 13px; margin: 0 0 10px; }
+/* min() rather than a bare 400px: the first argument of minmax is a hard floor,
+   so a bare value wider than the viewport pushes the whole page sideways. */
+.colophon { display: grid; gap: 44px 56px;
+            grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr)); }
+.colophon h3 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+.colophon p { color: var(--ink-mid); font-size: 13px; line-height: 1.65;
+              margin: 0 0 12px; max-width: 62ch; }
+.colophon .disc { margin-top: 14px; }
 .flow {
   font-family: var(--code); font-size: 11.5px; color: var(--ink-mid);
   background: var(--sunk); border: 1px solid var(--rule); border-radius: 8px;
@@ -838,14 +903,38 @@ table.data .read.HIGH { color: var(--lost); }
     <div class="disc-panel" id="p-reasons" hidden></div>
   </section>
 
-  <!-- 5. The retry storm ------------------------------------------------- -->
+  <!-- 5. Was acting selectively worth it? --------------------------------- -->
+  <section class="band" aria-labelledby="policy-h">
+    <div class="band-head"><h2 id="policy-h">Was this the right call?</h2>
+      <span class="assume" id="policy-assume"></span></div>
+    <p class="voice" id="policy-claim">Comparing what Verdict did against the
+      obvious alternatives&hellip;</p>
+    <div class="policy-scroll">
+      <table class="policy">
+        <thead><tr>
+          <th>What we could have done</th><th>Attempts</th><th>Got back</th>
+          <th>Wasted attempts</th><th>Net per 1,000 failed</th>
+        </tr></thead>
+        <tbody id="policy-rows"></tbody>
+      </table>
+    </div>
+    <div class="chart-wrap" id="policy-chart"></div>
+    <p class="verdict-band" id="policy-verdict"></p>
+    <button class="disc" data-panel="p-policy" aria-expanded="false" aria-controls="p-policy">
+      <span class="caret"></span>How we calculated this</button>
+    <div class="disc-panel" id="p-policy" hidden></div>
+  </section>
+
+  <!-- 6. The retry storm ------------------------------------------------- -->
   <section class="band" aria-labelledby="storm-h">
     <div class="band-head"><h2 id="storm-h">We stopped hammering the banks</h2></div>
     <p class="voice">The first version of the retry loop kept trying until something
       worked. Mostly it retried payments that could never work &mdash; which costs
       you goodwill with your bank and your customer, and recovers nothing.</p>
-    <div class="storm" id="storm"></div>
-    <div id="storm-cost"></div>
+    <div class="storm-group">
+      <div class="storm" id="storm"></div>
+      <div id="storm-cost"></div>
+    </div>
     <button class="disc" data-panel="p-storm" aria-expanded="false" aria-controls="p-storm">
       <span class="caret"></span>Show the full simulation</button>
     <div class="disc-panel" id="p-storm" hidden></div>
@@ -898,7 +987,6 @@ what should we do?  ---->  and why we did it</div>
         <p>A payment diagnosed as fraud never reaches the recovery model and never
           reaches a language model. It is not a filter applied afterwards &mdash;
           there is no path through the code where it gets that far.</p>
-        <div id="fraud-guard"></div>
       </div>
       <div>
         <h3>How well it actually works</h3>
@@ -910,6 +998,9 @@ what should we do?  ---->  and why we did it</div>
       <div>
         <h3>Where the explanations come from</h3>
         <div id="llm-note"></div>
+        <button class="disc" data-panel="p-llm" aria-expanded="false" aria-controls="p-llm">
+          <span class="caret"></span>Which model, and when it is called</button>
+        <div class="disc-panel" id="p-llm" hidden></div>
       </div>
     </div>
   </section>
@@ -1702,13 +1793,6 @@ function renderAttention() {
       + "They are expected to be zero, and the test suite fails the build if they "
       + "ever are not.</p></div>";
 
-  // Live fraud guarantee, repeated in the colophon.
-  el("fraud-guard").innerHTML = kvRows([
-    ["Diagnosed as fraud in this batch", num(fraud.length)],
-    ["Given a recovery action", num(fraud.filter(d => d.action !== "no_action").length)],
-    ["Given a recovery score", num(fraud.filter(d => d.recovery_prob != null).length)],
-  ]);
-
   const go = el("go-escalated");
   if (go) go.addEventListener("click", () => {
     el("f-action").value = "escalate";
@@ -1754,7 +1838,6 @@ function renderReasons(b) {
     + "</strong> of your UPI failures are people abandoning the app. Those need "
     + "completely different responses, which is the whole reason this splits by rail.";
 
-  const rails = b.by_payment_method || {};
   el("p-reasons").innerHTML =
     "<h4>What the classifier is actually predicting</h4>"
     + '<table class="data"><thead><tr><th>Shown as</th><th>Class name</th>'
@@ -1774,8 +1857,6 @@ function renderReasons(b) {
       + "references for cards, the NPCI code list for UPI. Nothing is inferred from "
       + "a code the table does not cover; an unknown code says so rather than "
       + "guessing.</p>"
-    + "<h4>Rails in this batch</h4>"
-    + kvRows([["Card payments", num(rails.card || 0)], ["UPI payments", num(rails.upi || 0)]])
     + "<p>Because the two rails fail for structurally different reasons, the rail "
       + "itself is a real input to the model rather than a label on a chart.</p>";
   wireDisclosures();
@@ -1888,6 +1969,223 @@ async function loadShift(constructed) {
         + "can be shown catching something. Synthetic payments cannot drift on "
         + "their own.</p>";
   } catch (e) { /* the comparison is optional decoration, never load-bearing */ }
+}
+
+/* ============================================ 5. was it the right call === */
+/* An offline comparison of four retry policies over the held-out test set. The
+   numbers are computed by scripts/policy_eval.py and served as a committed
+   report; this only draws them. */
+
+const POLICY_NOTE = {
+  always_retry: "Every failed payment, including the fraud",
+  never_retry: "Write every failed payment off",
+  fixed_rule: "A rule engine reading the bank's decline code. No model",
+  verdict: "Diagnose first, then act only where it is worth it",
+};
+
+function renderPolicy(d) {
+  const pol = d.policies || [], cross = d.crossovers || [];
+  const byKey = {};
+  pol.forEach(p => { byKey[p.key] = p; });
+  const verdict = byKey.verdict, always = byKey.always_retry;
+  const a = d.assumptions || {}, head = d.headline || {};
+
+  el("policy-assume").innerHTML = "Assuming <b>" + inr(a.cost_per_retry)
+    + "</b> per retry attempt";
+
+  el("policy-claim").innerHTML =
+    "Verdict got back <strong>" + pct(head.recoverable_share_captured, 1)
+    + "</strong> of everything that could have been recovered, using <strong>"
+    + pct(head.attempt_reduction_vs_always, 0) + " fewer attempts</strong> than "
+    + "retrying every failed payment.";
+
+  el("policy-rows").innerHTML = pol.map(p =>
+    '<tr' + (p.key === "verdict" ? ' class="mine"' : "") + ">"
+    + '<td><span class="what">' + esc(p.label)
+      + "<small>" + esc(POLICY_NOTE[p.key] || "") + "</small></span></td>"
+    + "<td>" + num(p.attempts) + "</td>"
+    + "<td>" + inr(p.recovered_revenue) + "</td>"
+    + "<td>" + num(p.wasted_retries) + "</td>"
+    + "<td>" + inr(p.net_per_1000_failed) + "</td></tr>").join("");
+
+  drawSensitivity(d);
+
+  // Where Verdict loses, in body text rather than behind a disclosure.
+  const above = cross.find(c => c.verdict_wins === "above");
+  const below = cross.find(c => c.verdict_wins === "below");
+  const win = head.verdict_wins_between;
+  el("policy-verdict").innerHTML =
+    (win ? "<b>Verdict nets the most of the four between " + inr(win[0]) + " and "
+           + inr(win[1]) + " per attempt.</b> " : "")
+    + (above ? "Below " + inr(above.cost) + ", retrying everything nets more — "
+               + "it recovers " + inr((always.recovered_revenue || 0)
+                  - (verdict.recovered_revenue || 0))
+               + " more, and when attempts are nearly free that is worth the "
+               + num(always.attempts - verdict.attempts) + " extra tries. " : "")
+    + (below ? "Above " + inr(below.cost) + ", the plain rule engine nets more, "
+               + "because at that price the cheapest thing to do is barely try. " : "")
+    + "Which end of that range you are at depends on what a retry actually costs "
+    + "you, and that is an assumption here rather than something we measured.";
+
+  el("p-policy").innerHTML = policyMethod(d);
+  wireDisclosures();
+}
+
+/* Net value against the cost of a retry. Hand-rolled: the page may not load a
+   charting library, and four straight lines do not need one. */
+function drawSensitivity(d) {
+  const W = 900, H = 360, L = 74, R = 210, T = 26, B = 44;
+  const sweep = d.sweep || [];
+  if (!sweep.length) { el("policy-chart").innerHTML = ""; return; }
+
+  const n = d.dataset.n || 1;
+  const per = v => v / n * 1000;            // net value per 1,000 failed payments
+  const keys = ["always_retry", "verdict", "fixed_rule", "never_retry"];
+  const colour = { always_retry: "var(--lost)", verdict: "var(--indigo)",
+                   fixed_rule: "var(--rail-upi)", never_retry: "var(--ink-soft)" };
+  const shortName = { always_retry: "Retry everything", verdict: "Verdict",
+                      fixed_rule: "Bank's code rule", never_retry: "Retry nothing" };
+
+  const xs = sweep.map(s => s.cost);
+  const x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+  let lo = 0, hi = 0;
+  sweep.forEach(s => keys.forEach(k => {
+    const v = per(s.net_value[k]);
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }));
+  const pad = (hi - lo) * 0.08;
+  lo -= pad; hi += pad;
+
+  const X = c => L + ((c - x0) / (x1 - x0)) * (W - L - R);
+  const Y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+
+  const lines = keys.map(k =>
+    '<path class="line" stroke="' + colour[k] + '" d="'
+    + sweep.map((s, i) => (i ? "L" : "M") + X(s.cost).toFixed(1) + ","
+        + Y(per(s.net_value[k])).toFixed(1)).join(" ") + '"></path>').join("");
+
+  // Names sit at the right end of each line rather than in a legend, so the eye
+  // never has to travel to match a colour to a policy. Two lines can finish
+  // close together -- Verdict and "retry nothing" nearly meet at the right-hand
+  // edge -- so the labels are pushed apart before they are drawn.
+  const last = sweep[sweep.length - 1];
+  const MIN_GAP = 16;
+  const placed = keys
+    .map(k => ({ k: k, y: Y(per(last.net_value[k])) }))
+    .sort((a, b) => a.y - b.y);
+  for (let i = 1; i < placed.length; i++) {
+    if (placed[i].y - placed[i - 1].y < MIN_GAP) {
+      placed[i].y = placed[i - 1].y + MIN_GAP;
+    }
+  }
+  const ends = placed.map(e =>
+    // a leader line, so a nudged label still points at its own curve
+    (Math.abs(e.y - Y(per(last.net_value[e.k]))) > 1
+      ? '<line class="grid" x1="' + (W - R + 2) + '" y1="'
+        + Y(per(last.net_value[e.k])) + '" x2="' + (W - R + 7) + '" y2="' + e.y
+        + '" stroke="' + colour[e.k] + '"></line>'
+      : "")
+    + '<text class="name" fill="' + colour[e.k] + '" x="' + (W - R + 10)
+    + '" y="' + (e.y + 4) + '">' + shortName[e.k] + "</text>").join("");
+
+  // Gridlines and axis labels
+  const ticks = [];
+  for (let c = x0; c <= x1; c += 100) {
+    ticks.push('<line class="grid" x1="' + X(c) + '" y1="' + T + '" x2="' + X(c)
+      + '" y2="' + (H - B) + '"></line>'
+      + '<text class="axis" text-anchor="middle" x="' + X(c) + '" y="' + (H - B + 18)
+      + '">' + inr(c) + "</text>");
+  }
+  const yTicks = [];
+  const step = (hi - lo) / 4;
+  for (let i = 0; i <= 4; i++) {
+    const v = lo + step * i;
+    yTicks.push('<text class="axis" text-anchor="end" x="' + (L - 10) + '" y="'
+      + (Y(v) + 4) + '">' + (Math.abs(v) >= 1000
+          ? (v < 0 ? "-" : "") + "₹" + Math.round(Math.abs(v) / 1000) + "k"
+          : inr(v)) + "</text>");
+  }
+  const zero = (lo < 0 && hi > 0)
+    ? '<line class="zero" x1="' + L + '" y1="' + Y(0) + '" x2="' + (W - R)
+      + '" y2="' + Y(0) + '"></line>' : "";
+
+  // Crossovers labelled on the chart itself, not in a caption underneath.
+  const marks = (d.crossovers || []).map((c, i) => {
+    const at = sweep.reduce((best, s) =>
+      Math.abs(s.cost - c.cost) < Math.abs(best.cost - c.cost) ? s : best, sweep[0]);
+    const y = Y(per(at.net_value.verdict));
+    const up = i === 0;
+    return '<line class="xmark" x1="' + X(c.cost) + '" y1="' + T + '" x2="' + X(c.cost)
+        + '" y2="' + (H - B) + '"></line>'
+      + '<circle class="dot" cx="' + X(c.cost) + '" cy="' + y
+        + '" r="4.5" fill="var(--indigo)"></circle>'
+      + '<text class="xnote" x="' + (X(c.cost) + 8) + '" y="' + (up ? T + 16 : H - B - 26)
+        + '">' + inr(c.cost) + "</text>"
+      + '<text class="xnote-sub" x="' + (X(c.cost) + 8) + '" y="'
+        + (up ? T + 31 : H - B - 11) + '">'
+        + (c.verdict_wins === "above" ? "Verdict overtakes retrying everything"
+                                      : "the rule engine overtakes Verdict") + "</text>";
+  }).join("");
+
+  el("policy-chart").innerHTML =
+    '<svg class="chart-svg" viewBox="0 0 ' + W + " " + H + '" role="img" '
+    + 'aria-label="Net value per 1,000 failed payments for each policy, as the '
+    + 'cost of a retry rises from zero to five hundred rupees">'
+    + ticks.join("") + zero + yTicks.join("") + lines + marks + ends
+    + '<text class="axis" text-anchor="middle" x="' + ((L + W - R) / 2) + '" y="' + (H - 6)
+      + '">What one retry attempt costs you</text>'
+    + "</svg>";
+}
+
+function policyMethod(d) {
+  const a = d.assumptions || {}, ds = d.dataset || {};
+  return "<h4>What this compares</h4>"
+    + "<p>Four ways of handling the same 1,600 failed payments from the held-out "
+      + "test set — payments the models never saw while learning. Every policy is "
+      + "scored on identical rows, so the only thing that differs is which "
+      + "payments it chose to act on.</p>"
+    + "<h4>The assumption that makes this possible, and its limit</h4>"
+    + "<p>" + esc(a.counterfactual_note || "") + "</p>"
+    + "<p>" + esc(a.single_attempt_note || "") + "</p>"
+    + "<h4>What a retry costs</h4>"
+    + "<p>" + esc(a.cost_note || "") + "</p>"
+    + kvRows([
+        ["Assumed cost per attempt", inr(a.cost_per_retry)],
+        ["Extra cost charged for a customer nudge", inr(a.cost_per_nudge_extra)],
+        ["Range swept", inr(a.sweep_min) + " to " + inr(a.sweep_max)],
+      ])
+    + "<h4>The payments being compared</h4>"
+    + kvRows([
+        ["Failed payments in the test set", num(ds.n)],
+        ["Total value that failed", inr(ds.total_failed_value)],
+        ["How many were actually recoverable", num(ds.recoverable_count)],
+        ["What those were worth", inr(ds.recoverable_value)],
+      ])
+    + "<h4>How each policy decides</h4>"
+    + '<table class="data"><thead><tr><th>Policy</th><th>Decides by</th>'
+      + '<th class="n">Attempts</th><th class="n">Net value</th></tr></thead><tbody>'
+    + (d.policies || []).map(p => "<tr><td>" + esc(p.label) + "</td><td>"
+        + esc(POLICY_NOTE[p.key] || "") + '</td><td class="n">' + num(p.attempts)
+        + '</td><td class="n">' + inr(p.net_value) + "</td></tr>").join("")
+    + "</tbody></table>"
+    + "<p>No policy is allowed to see whether a retry would have worked. That "
+      + "column is removed from the data before any policy is asked to decide, "
+      + "and is read only afterwards, to score what each one chose. The test "
+      + "suite proves it by flipping every outcome and checking that not one "
+      + "decision moves.</p>";
+}
+
+async function loadPolicy() {
+  try {
+    renderPolicy(await getJSON("/reports/policy-eval"));
+  } catch (e) {
+    el("policy-claim").innerHTML = "The policy comparison has not been run yet. Run "
+      + '<span class="mono">python scripts/policy_eval.py</span> and reload.';
+    el("policy-assume").textContent = "";
+    const disc = document.querySelector('[data-panel="p-policy"]');
+    if (disc) disc.hidden = true;
+  }
 }
 
 /* ================================================== 5. the retry storm === */
@@ -2202,8 +2500,9 @@ async function loadHealth() {
     el("llm-note").innerHTML =
       "<p>Every explanation on this page is written from the bank's actual decline "
       + "code and its verified meaning. A language model narrates that; it never "
-      + "decides anything.</p>"
-      + kvRows([
+      + "decides anything.</p>";
+    el("p-llm").innerHTML =
+      kvRows([
           ["Explanations here", llm.live ? "written offline, to protect the quota" : "written offline", true],
           ["Live model available", llm.live ? esc(llm.provider || "yes") : "not configured", true],
           ["Model", esc(llm.model || "none"), true],
@@ -2211,6 +2510,7 @@ async function loadHealth() {
       + "<p>" + (llm.note ? esc(llm.note)
           : "Selecting a payment and asking for a live explanation is the only "
             + "thing on this page that calls it, one payment at a time.") + "</p>";
+    wireDisclosures();
     return moved;
   } catch (e) {
     el("llm-note").innerHTML = "<p>Could not read the service status. The numbers "
@@ -2278,7 +2578,6 @@ async function loadQuality() {
 function setProvenance(html) { el("provenance").innerHTML = html; }
 
 function provenanceFor(n, choice, constructed, pinned) {
-  const ids = ALL.map(d => d.transaction_id);
   return '<span class="count">' + num(n) + " payments</span>"
     + (constructed
         ? '<span class="stamp built">Patterns shifted deliberately, for '
@@ -2286,9 +2585,7 @@ function provenanceFor(n, choice, constructed, pinned) {
         : pinned
           ? '<span class="stamp pinned">Pinned batch &mdash; the same numbers on '
             + "every run</span>"
-          : '<span class="stamp fresh">Fresh sample, drawn just now</span>'
-            + '<span class="stamp">starting at <span class="mono">'
-            + esc(ids[0] == null ? "—" : ids[0]) + "</span></span>");
+          : '<span class="stamp fresh">Fresh sample, drawn just now</span>');
 }
 
 /* Bands still waiting on a request read as placeholders rather than as empty
@@ -2420,6 +2717,7 @@ run();
 loadHealth().then(redraw => { if (redraw && FEED.length) renderLedger(); });
 loadStorm();
 loadQuality();
+loadPolicy();
 </script>
 </body>
 </html>

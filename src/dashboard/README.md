@@ -53,6 +53,7 @@ sentence that says what the numbers mean.
 | Pattern-shift detail, and the monitor firing vs not firing | `GET /stats/drift`, `GET /reports/drift-comparison` |
 | **Where your money went** — the money flow | the batch response (`amount`, `predicted_category`, `action`, `retry_success`) |
 | Cards and UPI fail differently | `GET /stats/breakdown` → `category_by_method`, `by_payment_method` |
+| Was this the right call? (four-policy comparison + sensitivity chart) | `GET /reports/policy-eval` |
 | We stopped hammering the banks (retry storm) | `GET /reports/retry-storm` |
 | Every decision, on the record (the ledger) | `POST /simulate/*` then `GET /decisions` |
 | Uncertainty range per row | `recovery_interval` on each decision |
@@ -89,6 +90,33 @@ Two properties are worth knowing:
 No charting library: the CSP/offline test forbids external references, and this is a
 fixed 1-4-5-4 graph, so the layout is arithmetic rather than a dependency. Below 720px
 it becomes three stacked steps with the same labels, colours, rupees and click-to-filter.
+
+## Was this the right call?
+
+An offline comparison of four retry policies over the held-out test set, computed by
+`scripts/policy_eval.py` and served as a committed report. It answers the question the
+rest of the page cannot: would a merchant who simply retried everything have done
+better?
+
+**Sometimes, yes, and the page says so in body text rather than in a footnote.** Net
+value is `revenue − attempts × cost`, so the ranking depends entirely on what a retry
+costs. Below ₹46.84 per attempt retrying everything nets more; above ₹365.20 a plain
+decline-code rule engine does; Verdict wins the range between. The claim that holds at
+every cost — and therefore the headline — is that Verdict captures 92.5% of all
+recoverable revenue using 46% fewer attempts.
+
+The cost per retry is an **assumption, not a measurement**, and the band says so without
+needing a click. The sensitivity chart is what actually answers the question: both
+crossovers are labelled directly on the lines, so a reader who believes a different cost
+can read off their own answer.
+
+No policy is allowed to see whether a retry would have worked: the outcome column is
+dropped before any policy is asked to decide, and read only afterwards to score what each
+one chose. `tests/test_policy_eval.py` proves it by handing every policy the raw frame
+with every outcome flipped and asserting that not one decision moves.
+
+The chart is hand-rolled inline SVG for the same reason as the money flow — the page may
+not reference anything external.
 
 ## Progressive disclosure
 
