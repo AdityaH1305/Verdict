@@ -181,20 +181,30 @@ a { color: var(--indigo); }
 .band > .voice { margin: 14px 0 34px; }
 
 /* -------------------------------------------------------------- masthead --- */
+/* A letterhead, which is what a settlement statement has. The rule across the
+   very top is the only piece of pure identity on the page; everything under it
+   stays reportage. */
 .masthead {
+  border-top: 3px solid var(--indigo);
   border-bottom: 1px solid var(--rule);
   background: var(--sheet);
 }
 .masthead-in {
-  max-width: 1120px; margin: 0 auto; padding: 16px 24px;
+  max-width: 1120px; margin: 0 auto; padding: 20px 24px 19px;
   display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
 }
-.brand { display: flex; align-items: baseline; gap: 12px; margin-right: auto; }
+/* Name and strapline share a baseline with a hairline between them, the way a
+   masthead sets a title against its strapline. */
+.brand { display: flex; align-items: baseline; gap: 14px; margin-right: auto; }
 .brand .name {
-  font-family: var(--figure); font-size: 20px; font-weight: 700;
-  letter-spacing: -.02em;
+  font-family: var(--figure); font-size: 27px; font-weight: 700;
+  letter-spacing: -.035em; color: var(--ink); line-height: 1;
 }
-.brand .tag { color: var(--ink-soft); font-size: 13px; }
+.brand .tag {
+  color: var(--ink-mid); font-size: 13.5px; line-height: 1.35;
+  padding-left: 15px; border-left: 1px solid var(--rule-strong);
+  align-self: stretch; display: flex; align-items: center;
+}
 
 .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
@@ -764,7 +774,9 @@ table.data .read.HIGH { color: var(--lost); }
   /* Brand and the theme toggle share one row; the tagline stacks beneath the
      name rather than pushing the toggle onto a line of its own. */
   .masthead-in { flex-wrap: nowrap; align-items: flex-start; }
-  .brand { flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+  .brand { flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+  .brand .name { font-size: 24px; }
+  .brand .tag { padding-left: 0; border-left: 0; display: block; }
   /* Side by side, these two labels wrap to three lines each on a phone. */
   .scenarios { flex-direction: column; width: 100%; }
   .scenario { border-right: 0; border-bottom: 1px solid var(--rule-strong); }
