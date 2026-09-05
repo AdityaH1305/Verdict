@@ -431,8 +431,8 @@ reason.
 GSAP, ScrollTrigger and Lenis are **committed to `src/dashboard/vendor/`** rather than
 pulled from a CDN, so the offline guarantee still holds; provenance and licences are in
 [`src/dashboard/vendor/README.md`](src/dashboard/vendor/README.md). They drive the smooth
-scrolling, the money-flow value tween and one restrained entrance per section, and they
-are treated as an enhancement throughout: every integration point is guarded, and with
+scrolling, the money-flow value tween and the flow diagram's draw-in, and they are
+treated as an enhancement throughout: every integration point is guarded, and with
 the files removed the dashboard renders, decides and scrolls exactly as it did before.
 All motion is disabled under `prefers-reduced-motion`, where Lenis is never constructed
 at all.

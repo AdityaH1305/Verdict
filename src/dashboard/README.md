@@ -146,17 +146,26 @@ They replace hand-rolled motion rather than adding a second system on top:
 - **GSAP** drives the money-flow value tween, which previously ran its own rAF loop, with
   `lagSmoothing(0)` so a stalled frame cannot make the figures jump.
 - **ScrollTrigger** plays the flow's draw-in when the diagram enters view rather than on
-  load, and gives each section one short entrance. Every trigger is `once: true` and kills
-  itself after firing.
+  load. `once: true`, so the trigger kills itself after firing.
+
+There is deliberately **no scroll-triggered entrance on the sections**. The first version
+faded each one in as it scrolled into view, and it was quietly broken: `gsap.from`
+hides content and then depends on a scroll event to bring it back, but this page's height
+grows by roughly 4,600 px partway through loading, when the ledger renders. Trigger
+positions computed before that were stale, so sections could be scrolled straight past
+without ever appearing — measured, "How this works" was still invisible after scrolling
+6,000 px down, and only showed up when opening a disclosure happened to force a refresh.
+A debounced `ScrollTrigger.refresh()` was not enough. The flow's draw-in is kept because
+it is safe by construction: it toggles a class that animates `clip-path`, so if the
+trigger never fires the diagram is simply fully drawn.
 
 Three things worth knowing if you change this:
 
 1. **Nothing depends on the libraries loading.** `HAS_GSAP` / `HAS_LENIS` guard every
    integration point; remove the files and the page still renders, decides and scrolls.
    A test covers it.
-2. **The entrance animates the section heading, not the section.** Fading a whole band
-   promotes its entire subtree to a composite layer, and the ledger band is 4,689 px of
-   table — measured, that alone took the worst frame from 12.8 ms to 35 ms.
+2. **Nothing may hide content behind an event that might not fire.** See the section
+   entrances above; `tests/test_dashboard_api.py` guards against them coming back.
 3. **`ScrollTrigger.refresh()` runs after data lands**, debounced. Page height changes
    enormously once the ledger renders, and stale trigger positions are what strand a
    section at `opacity: 0`.

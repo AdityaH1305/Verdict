@@ -327,6 +327,49 @@ class TestVendoredLibraries:
         for name in self.LIBS:
             assert f'src="vendor/{name}"' in html, f"{name} is not referenced"
 
+    def test_no_content_is_hidden_pending_a_scroll_event(self):
+        """
+        Regression: sections were faded in on scroll with gsap.from({opacity:0}),
+        which hides content and then relies on a scroll event to restore it. This
+        page's height grows by roughly 4,600px partway through loading, when the
+        ledger renders, so trigger positions computed earlier were stale and
+        sections could be scrolled straight past without ever being revealed --
+        "How this works" stayed invisible after scrolling 6,000px down.
+
+        A debounced ScrollTrigger.refresh() was not enough. Nothing may hide
+        content behind an event that might not fire.
+        """
+        with open(api_main.DASHBOARD_INDEX, encoding="utf-8") as f:
+            html = f.read()
+
+        assert "revealBands" not in html, (
+            "the scroll-triggered section reveal is back; it strands content when "
+            "the page height changes after load"
+        )
+        # the flow's draw-in is fine: it toggles a class that animates clip-path,
+        # so if the trigger never fires the diagram is simply fully drawn
+        assert "opacity: 0" not in html.replace("fill-opacity", ""), (
+            "something hides content with opacity 0 -- if it depends on a scroll "
+            "event to come back, it can strand"
+        )
+
+    def test_the_loading_placeholder_does_not_swallow_clicks(self):
+        """
+        Regression: .waiting::after is an absolutely-positioned overlay across the
+        ledger while a batch loads. Without pointer-events:none it captured the
+        clicks meant for the rows underneath, so the table felt dead mid-load.
+        """
+        with open(api_main.DASHBOARD_INDEX, encoding="utf-8") as f:
+            html = f.read()
+
+        after = html.split(".waiting::after {", 1)
+        assert len(after) == 2, "the loading placeholder rule moved"
+        rule = after[1].split("}", 1)[0]
+        assert "pointer-events: none" in rule, (
+            "the loading placeholder can capture clicks meant for the content "
+            "underneath it"
+        )
+
     def test_the_dashboard_survives_a_missing_library(self, client):
         """
         The libraries are an enhancement, not a dependency. The page must still

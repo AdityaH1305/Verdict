@@ -799,6 +799,10 @@ table.data .read.HIGH { color: var(--lost); }
 .waiting::after {
   content: ""; position: absolute; inset: 0;
   background: var(--rule); border-radius: 6px; opacity: .5;
+  /* It covers the ledger while a batch loads, so without this it swallows
+     clicks on the rows underneath -- a placeholder should be visible, not
+     interactive. */
+  pointer-events: none;
 }
 #reasons.waiting, #ledger.waiting { display: block; min-height: 120px; }
 
@@ -1213,38 +1217,25 @@ function refreshTriggers() {
   REFRESH_T = setTimeout(() => ScrollTrigger.refresh(), 200);
 }
 
-/* One restrained entrance per band, on first scroll-in only. `once` kills each
-   trigger after it fires, so nothing accumulates over the life of the page.
+/* There is deliberately no scroll-triggered entrance on the sections.
+   
+   The first version faded each section in as it scrolled into view. It looked
+   fine and was quietly broken: gsap.from({opacity:0}) hides content and then
+   depends on a scroll event to bring it back, and this page's height changes by
+   roughly 4,600px partway through loading, when the ledger renders. Trigger
+   positions computed before that are wrong, so sections could be scrolled past
+   without ever being revealed -- measured, "How this works" was still invisible
+   after scrolling 6,000px down the page, and only appeared when opening a
+   disclosure happened to force a refresh.
 
-   It animates the band's HEADING, not the band. Fading a whole band means
-   promoting its entire subtree to a composite layer, and the ledger band is
-   4,689px of table -- measured, that alone took the worst frame from 12.8ms to
-   35ms and dropped frames during scroll. Animating the heading costs nothing and
-   reads the same, and the data underneath never moves, which is what you want of
-   a table somebody is trying to read. */
-function revealBands() {
-  if (!HAS_GSAP || STILL()) return;
-  document.querySelectorAll(".band, .settlement").forEach(band => {
-    if (band.dataset.revealed) return;
-    band.dataset.revealed = "1";
-    // the small things at the top of a section, never the section itself
-    const parts = [band.querySelector(".band-head"),
-                   band.querySelector(":scope > .voice"),
-                   band.classList.contains("settlement") ? band.querySelector(".hero-fig") : null]
-                  .filter(Boolean);
-    if (!parts.length) return;
-    gsap.from(parts, {
-      opacity: 0, y: 14, duration: 0.45, ease: "power2.out", stagger: 0.06,
-      // Measured: dropping clearProps roughly tripled the worst frame during the
-      // first scroll (about 40ms -> about 110ms). Leaving the inline opacity and
-      // transform in place keeps those elements on their own composite layer for
-      // the rest of the session, which is worse than the one invalidation this
-      // costs when the tween ends.
-      clearProps: "opacity,transform",
-      scrollTrigger: { trigger: band, start: "top 88%", once: true },
-    });
-  });
-}
+   A debounced ScrollTrigger.refresh() was not enough, and no amount of refresh
+   scheduling makes "hide the content and hope an event restores it" safe on a
+   page that renders asynchronously. The flow's draw-in is kept because it is
+   safe by construction: it animates clip-path via a class, so if the trigger
+   never fires the diagram is simply fully drawn.
+
+   GSAP still drives the money-flow value tween and that draw-in; Lenis still
+   drives scrolling. Nothing here can strand content the reader needs. */
 
 /* ============================================================== theme === */
 (function theme() {
@@ -2798,7 +2789,6 @@ async function run() {
     loadShift(constructed);      // read-only; a failure here must not break the page
     renderReasons(brk);
     markLoading(false);
-    revealBands();
     refreshTriggers();           // the ledger just changed the page height
 
     FEED = feed.decisions || [];
@@ -2874,7 +2864,6 @@ wireDisclosures();
    round trip in front of the batch bought nothing; if the server ever reports
    different cutoffs, the ledger redraws then. */
 run();
-revealBands();
 loadHealth().then(redraw => { if (redraw && FEED.length) renderLedger(); });
 loadStorm();
 loadQuality();
