@@ -1,7 +1,8 @@
 # Dashboard
 
-One self-contained file: [`index.html`](index.html). Vanilla JS + CSS, **no build
-step, no `npm install`, no CDN**. FastAPI serves it at `GET /`.
+One page: [`index.html`](index.html), plus three vendored libraries in
+[`vendor/`](vendor/README.md). Vanilla JS + CSS, **no build step, no `npm install`,
+no CDN**. FastAPI serves the page at `GET /` and the libraries at `/vendor/*`.
 
 ```bash
 uvicorn src.api.main:app
@@ -127,6 +128,42 @@ cutoffs and the hedging rule, the PSI table with its threshold scale, the model 
 names beside their merchant labels, the full retry simulation, and the measured model
 metrics. Nothing was removed from the old
 page; the model vocabulary moved one click deeper.
+
+## Motion
+
+GSAP + ScrollTrigger and Lenis, **vendored rather than loaded from a CDN** so the
+offline guarantee survives — see [`vendor/README.md`](vendor/README.md) for provenance
+and licences.
+
+They replace hand-rolled motion rather than adding a second system on top:
+
+- **Lenis** drives smooth scrolling, running off GSAP's ticker rather than its own
+  `requestAnimationFrame`, so there is one animation loop rather than two. The three
+  inner scroll containers (`.ledger-scroll`, `.policy-scroll`, `.chart-wrap`) carry
+  `data-lenis-prevent` and keep native scrolling — without it Lenis swallows the wheel
+  exactly where a reader needs to scroll a wide table sideways. `smoothTouch` is off, so
+  touch devices keep the OS behaviour.
+- **GSAP** drives the money-flow value tween, which previously ran its own rAF loop, with
+  `lagSmoothing(0)` so a stalled frame cannot make the figures jump.
+- **ScrollTrigger** plays the flow's draw-in when the diagram enters view rather than on
+  load, and gives each section one short entrance. Every trigger is `once: true` and kills
+  itself after firing.
+
+Three things worth knowing if you change this:
+
+1. **Nothing depends on the libraries loading.** `HAS_GSAP` / `HAS_LENIS` guard every
+   integration point; remove the files and the page still renders, decides and scrolls.
+   A test covers it.
+2. **The entrance animates the section heading, not the section.** Fading a whole band
+   promotes its entire subtree to a composite layer, and the ledger band is 4,689 px of
+   table — measured, that alone took the worst frame from 12.8 ms to 35 ms.
+3. **`ScrollTrigger.refresh()` runs after data lands**, debounced. Page height changes
+   enormously once the ledger renders, and stale trigger positions are what strand a
+   section at `opacity: 0`.
+
+A `@media print` rule forces the finished state, so a print or a full-page capture can
+never catch a section mid-reveal — the screenshots in `assets/` are taken with
+`captureBeyondViewport`.
 
 ## Quota safety
 

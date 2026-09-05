@@ -802,6 +802,15 @@ table.data .read.HIGH { color: var(--lost); }
 }
 #reasons.waiting, #ledger.waiting { display: block; min-height: 120px; }
 
+/* A reveal is applied by script and removed on completion, so nothing here
+   hides content on its own. Print and full-page capture force the finished
+   state regardless -- assets/*.png are captured with captureBeyondViewport, and
+   a band caught at opacity 0 would silently ship a blank screenshot. */
+@media print {
+  .band, .settlement { opacity: 1 !important; transform: none !important; }
+  .flow-svg { clip-path: none !important; animation: none !important; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
@@ -1019,6 +1028,16 @@ what should we do?  ---->  and why we did it</div>
 
 </main>
 
+<!--
+  Vendored, not from a CDN: the page must keep working with no internet, and
+  tests/test_dashboard_api.py forbids external references. Provenance and
+  licences in vendor/README.md. Everything below degrades gracefully if these
+  files are missing -- see HAS_GSAP / HAS_LENIS.
+-->
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
+<script src="vendor/lenis.min.js"></script>
+
 <script>
 "use strict";
 
@@ -1131,6 +1150,102 @@ let LAST_BREAKDOWN = null;   // kept so a resize can redraw the flow in its othe
    row produced a page nobody could navigate. */
 const FEED_LIMIT = 60;
 
+/* ============================================================= motion === */
+/* GSAP and Lenis are enhancements, never requirements. If a vendored file is
+   missing the dashboard still renders, still decides, and still scrolls -- it
+   just does it with the hand-rolled rAF tween and native scrolling. A data tool
+   should not be one 404 away from broken. */
+const HAS_GSAP = typeof gsap !== "undefined" && typeof ScrollTrigger !== "undefined";
+const HAS_LENIS = typeof Lenis !== "undefined";
+const STILL = () => window.matchMedia
+  && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let LENIS = null;
+
+(function motion() {
+  if (HAS_GSAP) {
+    gsap.registerPlugin(ScrollTrigger);
+    // Without this, GSAP "catches up" after a stall by jumping an animation
+    // forward, which on the money flow would skip frames of a value tween.
+    gsap.ticker.lagSmoothing(0);
+  }
+
+  if (!HAS_LENIS || STILL()) return;   // reduced motion keeps scrolling native
+
+  LENIS = new Lenis({
+    duration: 1.0,        // this page is read, not scrolled past
+    smoothWheel: true,
+    smoothTouch: false,   // touch keeps native scrolling; inertia there fights the OS
+  });
+
+  if (HAS_GSAP) {
+    // ONE animation loop. Lenis ships its own requestAnimationFrame; running it
+    // alongside GSAP's ticker means two loops competing for the same frames.
+    LENIS.on("scroll", ScrollTrigger.update);
+    gsap.ticker.add(t => LENIS.raf(t * 1000));
+  } else {
+    const loop = t => { LENIS.raf(t); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
+
+  // The inner scrollers keep native scrolling. Without this Lenis swallows the
+  // wheel over the ledger table and the sensitivity chart -- exactly where a
+  // reader needs to scroll sideways.
+  document.querySelectorAll(".ledger-scroll, .policy-scroll, .chart-wrap, .flow")
+    .forEach(n => n.setAttribute("data-lenis-prevent", ""));
+})();
+
+/* One way to move the page, so a programmatic jump animates through Lenis
+   instead of racing it. */
+function scrollToEl(node) {
+  if (!node) return;
+  if (LENIS) LENIS.scrollTo(node, { offset: -24 });
+  else node.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* Trigger positions are computed from page height, and this page's height
+   changes enormously once data lands -- the ledger alone adds sixty rows. Not
+   refreshing here is what leaves a band stranded at opacity 0. */
+let REFRESH_T = 0;
+function refreshTriggers() {
+  if (!HAS_GSAP) return;
+  clearTimeout(REFRESH_T);
+  REFRESH_T = setTimeout(() => ScrollTrigger.refresh(), 200);
+}
+
+/* One restrained entrance per band, on first scroll-in only. `once` kills each
+   trigger after it fires, so nothing accumulates over the life of the page.
+
+   It animates the band's HEADING, not the band. Fading a whole band means
+   promoting its entire subtree to a composite layer, and the ledger band is
+   4,689px of table -- measured, that alone took the worst frame from 12.8ms to
+   35ms and dropped frames during scroll. Animating the heading costs nothing and
+   reads the same, and the data underneath never moves, which is what you want of
+   a table somebody is trying to read. */
+function revealBands() {
+  if (!HAS_GSAP || STILL()) return;
+  document.querySelectorAll(".band, .settlement").forEach(band => {
+    if (band.dataset.revealed) return;
+    band.dataset.revealed = "1";
+    // the small things at the top of a section, never the section itself
+    const parts = [band.querySelector(".band-head"),
+                   band.querySelector(":scope > .voice"),
+                   band.classList.contains("settlement") ? band.querySelector(".hero-fig") : null]
+                  .filter(Boolean);
+    if (!parts.length) return;
+    gsap.from(parts, {
+      opacity: 0, y: 14, duration: 0.45, ease: "power2.out", stagger: 0.06,
+      // Measured: dropping clearProps roughly tripled the worst frame during the
+      // first scroll (about 40ms -> about 110ms). Leaving the inline opacity and
+      // transform in place keeps those elements on their own composite layer for
+      // the rest of the session, which is worse than the one invalidation this
+      // costs when the tween ends.
+      clearProps: "opacity,transform",
+      scrollTrigger: { trigger: band, start: "top 88%", once: true },
+    });
+  });
+}
+
 /* ============================================================== theme === */
 (function theme() {
   const root = document.documentElement;
@@ -1168,6 +1283,7 @@ function wireDisclosures(scope) {
       btn.setAttribute("aria-expanded", String(open));
       const on = btn.dataset.labelOn, off = btn.dataset.labelOff;
       if (on && off) btn.lastChild.textContent = open ? off : on;
+      refreshTriggers();   // opening a panel moves everything below it
     });
   });
 }
@@ -1472,7 +1588,20 @@ function drawFlow(f) {
   const wrap = el("flow-wrap");
   const first = !wrap.querySelector("svg");
   wrap.innerHTML = svg + '<div class="flow-tip" id="flow-tip" hidden></div>';
-  if (first) wrap.querySelector("svg").classList.add("reveal");
+  if (first) {
+    const node = wrap.querySelector("svg");
+    // The draw-in used to fire on load whether or not the diagram was on
+    // screen, so on a small window it played to nobody. Now it waits until the
+    // flow is actually in view. Class toggle, not a per-frame animation.
+    if (HAS_GSAP && !STILL()) {
+      ScrollTrigger.create({
+        trigger: node, start: "top 85%", once: true,
+        onEnter: () => node.classList.add("reveal"),
+      });
+    } else {
+      node.classList.add("reveal");
+    }
+  }
   FLOW_VIEW = view;
   wireFlow(wrap.querySelector("svg"));
 }
@@ -1592,7 +1721,7 @@ function applyFlowFilter(f) {
   el("f-cat").value = f.kind === "cat" ? f.value : "";
   el("f-action").value = f.kind === "action" ? f.value : "";
   renderLedger();
-  el("ledger-h").scrollIntoView({ behavior: "smooth", block: "start" });
+  scrollToEl(el("ledger-h"));
 }
 
 /* ------------------------------------------------------------- animation --- */
@@ -1602,6 +1731,7 @@ function applyFlowFilter(f) {
    which is the one thing a static chart cannot show. */
 let FLOW_NOW = null;
 let FLOW_RAF = 0;
+let FLOW_TWEEN = null;
 
 function lerpFlow(a, b, t) {
   const mix = (x, y) => {
@@ -1622,6 +1752,7 @@ function tweenFlow(target) {
       && window.matchMedia("(prefers-reduced-motion: reduce)").matches)
     || document.hidden;   // a backgrounded tab stops firing frames entirely
   if (FLOW_RAF) { cancelAnimationFrame(FLOW_RAF); FLOW_RAF = 0; }
+  if (FLOW_TWEEN) { FLOW_TWEEN.kill(); FLOW_TWEEN = null; }
 
   // FLOW_NOW is the data the flow IS showing, so it is assigned up front rather
   // than when the animation happens to end. If frames stop mid-tween -- the tab
@@ -1631,6 +1762,20 @@ function tweenFlow(target) {
   FLOW_NOW = target;
 
   if (still || !from || from.total <= 0) { drawFlow(target); return; }
+
+  // GSAP drives this when it is available: same easing shape, but on the one
+  // shared ticker rather than a second rAF loop, and with lag smoothing off so
+  // a stalled frame cannot make the values jump.
+  if (HAS_GSAP) {
+    if (FLOW_TWEEN) FLOW_TWEEN.kill();
+    const at = { t: 0 };
+    FLOW_TWEEN = gsap.to(at, {
+      t: 1, duration: 0.7, ease: "power3.out",
+      onUpdate: () => patchFlow(lerpFlow(from, target, at.t), true),
+      onComplete: () => { FLOW_TWEEN = null; patchFlow(target, false); },
+    });
+    return;
+  }
 
   const start = performance.now(), DUR = 700;
   const step = now => {
@@ -1809,7 +1954,7 @@ function renderAttention() {
   if (go) go.addEventListener("click", () => {
     el("f-action").value = "escalate";
     renderLedger();
-    el("ledger-h").scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollToEl(el("ledger-h"));
   });
 
   wireDisclosures();
@@ -2653,6 +2798,8 @@ async function run() {
     loadShift(constructed);      // read-only; a failure here must not break the page
     renderReasons(brk);
     markLoading(false);
+    revealBands();
+    refreshTriggers();           // the ledger just changed the page height
 
     FEED = feed.decisions || [];
     FEED_TOTAL = feed.total || FEED.length;
@@ -2716,6 +2863,7 @@ window.addEventListener("resize", () => {
     FLOW_WAS_NARROW = narrow;
     FLOW_NOW = null;
     renderFlowPanel(renderFlowDiagram(ALL), LAST_BREAKDOWN);
+    refreshTriggers();
   }, 180);
 });
 
@@ -2726,6 +2874,7 @@ wireDisclosures();
    round trip in front of the batch bought nothing; if the server ever reports
    different cutoffs, the ledger redraws then. */
 run();
+revealBands();
 loadHealth().then(redraw => { if (redraw && FEED.length) renderLedger(); });
 loadStorm();
 loadQuality();

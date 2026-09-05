@@ -285,10 +285,73 @@ class TestDashboardRoutes:
 
 
 @requires_models
+class TestVendoredLibraries:
+    """
+    GSAP, ScrollTrigger and Lenis are committed and served locally rather than
+    pulled from a CDN, so the page keeps working with no internet. These assert
+    the wiring that makes that true.
+    """
+
+    LIBS = ["gsap.min.js", "ScrollTrigger.min.js", "lenis.min.js"]
+
+    @pytest.mark.parametrize("name", LIBS)
+    def test_each_library_is_served(self, client, name):
+        r = client.get(f"/vendor/{name}")
+
+        assert r.status_code == 200, f"/vendor/{name} is not being served"
+        assert "javascript" in r.headers["content-type"].lower()
+
+    @pytest.mark.parametrize("name", LIBS)
+    def test_each_library_is_the_real_thing(self, name):
+        """
+        Guards against an error page saved under a .js name. The first Lenis URL
+        tried during this work returned a 404 HTML document, which would have
+        committed happily and failed only in the browser.
+        """
+        path = os.path.join(api_main.VENDOR_DIR, name)
+
+        assert os.path.exists(path), f"{name} is not vendored"
+        assert os.path.getsize(path) > 10_000, f"{name} is too small to be the library"
+        with open(path, "rb") as f:
+            head = f.read(200).lower()
+        assert b"<html" not in head, f"{name} looks like an HTML error page"
+
+    def test_the_page_references_them_by_relative_path(self):
+        """
+        The whole point: no absolute URL, so the offline test below still holds
+        and the page never reaches the network for them.
+        """
+        with open(api_main.DASHBOARD_INDEX, encoding="utf-8") as f:
+            html = f.read()
+
+        for name in self.LIBS:
+            assert f'src="vendor/{name}"' in html, f"{name} is not referenced"
+
+    def test_the_dashboard_survives_a_missing_library(self, client):
+        """
+        The libraries are an enhancement, not a dependency. The page must still
+        be served -- and still contain its data wiring -- if one goes missing.
+        """
+        r = client.get("/")
+
+        assert r.status_code == 200
+        # the guards that make graceful degradation real, not aspirational
+        assert "HAS_GSAP" in r.text
+        assert "HAS_LENIS" in r.text
+        assert "scrollIntoView" in r.text, "native scroll fallback was removed"
+
+
+@requires_models
 def test_dashboard_html_has_no_external_dependencies():
     """
     The page must stay offline-safe: no CDN scripts, stylesheets, or fonts.
     A demo that breaks on a bad connection is worse than a plainer one.
+
+    Scans index.html ONLY, deliberately. The vendored libraries in
+    src/dashboard/vendor/ do contain https://gsap.com inside their required
+    licence banners, but they are read from disk and served locally -- a URL in
+    a comment is not a network dependency. TestVendoredLibraries above covers
+    those instead.
     """
     with open(api_main.DASHBOARD_INDEX, encoding="utf-8") as f:
         html = f.read()

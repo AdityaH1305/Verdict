@@ -22,6 +22,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -36,6 +37,9 @@ DASHBOARD_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dashboard"
 )
 DASHBOARD_INDEX = os.path.join(DASHBOARD_DIR, "index.html")
+# GSAP, ScrollTrigger and Lenis, committed rather than pulled from a CDN so the
+# page keeps working with no internet -- see src/dashboard/vendor/README.md.
+VENDOR_DIR = os.path.join(DASHBOARD_DIR, "vendor")
 RETRY_STORM_REPORT = os.path.join(REPORTS_DIR, "retry_storm.json")
 DEMO_BATCH_CSV = os.path.join(ROOT, "data", "demo", "demo_batch.csv")
 # CONSTRUCTED batch used only to demonstrate the drift monitor firing.
@@ -85,6 +89,12 @@ app = FastAPI(
 # highly repetitive JSON, so compression takes roughly an order of magnitude off
 # the wire for the one response that dominates the dashboard's load.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Vendored front-end libraries, served from the same origin as everything else.
+# GZipMiddleware above wraps the whole app, so these go out compressed: ~130KB of
+# minified JavaScript becomes ~50KB on the wire.
+if os.path.isdir(VENDOR_DIR):
+    app.mount("/vendor", StaticFiles(directory=VENDOR_DIR), name="vendor")
 
 
 def _agent() -> RecoveryAgent:

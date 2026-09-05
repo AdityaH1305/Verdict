@@ -3,7 +3,7 @@
 **Diagnoses *why* a payment failed, then decides the economically correct recovery
 action — instead of treating "failure" as one undifferentiated bucket.**
 
-[**Live demo →** verdict-1v70.onrender.com](https://verdict-1v70.onrender.com/) · Python 3.11 · FastAPI · XGBoost · 158 tests
+[**Live demo →** verdict-1v70.onrender.com](https://verdict-1v70.onrender.com/) · Python 3.11 · FastAPI · XGBoost · 166 tests
 
 > Two models and one agent. The first works out *why* a payment failed, the second
 > estimates whether recovering it would actually succeed, and only then is anything
@@ -345,7 +345,7 @@ Open **http://localhost:8000**. `data/`, `models/` and `reports/` are created by
 scripts — a fresh clone does not contain them and does not need to.
 
 ```bash
-pytest tests/          # 158 tests
+pytest tests/          # 166 tests
 ```
 
 For live LLM explanations, copy `.env.example` to `.env` and set `GEMINI_API_KEY`
@@ -422,10 +422,26 @@ notebooks, so they are reproducible, run headless, and drop straight into the da
 
 ## Design notes
 
-**The dashboard** is one self-contained HTML file — no build step, no `npm install`, no
-CDN — served by FastAPI itself, so it runs same-origin with the API and works with no
-internet. A test asserts no external reference ever creeps in. The money-flow diagram and
-the sensitivity chart are hand-rolled inline SVG for that reason.
+**The dashboard** is one HTML file plus three vendored libraries — no build step, no
+`npm install`, no CDN — served by FastAPI itself, so it runs same-origin with the API and
+works with no internet. A test asserts no external reference ever creeps into the page.
+The money-flow diagram and the sensitivity chart are hand-rolled inline SVG for the same
+reason.
+
+GSAP, ScrollTrigger and Lenis are **committed to `src/dashboard/vendor/`** rather than
+pulled from a CDN, so the offline guarantee still holds; provenance and licences are in
+[`src/dashboard/vendor/README.md`](src/dashboard/vendor/README.md). They drive the smooth
+scrolling, the money-flow value tween and one restrained entrance per section, and they
+are treated as an enhancement throughout: every integration point is guarded, and with
+the files removed the dashboard renders, decides and scrolls exactly as it did before.
+All motion is disabled under `prefers-reduced-motion`, where Lenis is never constructed
+at all.
+
+Measured cost, first paint: the page goes from 37.8 KB to 88.3 KB on the wire (the
+libraries gzip to 50.4 KB of that). Sustained scroll performance is unchanged — median
+frame 6.9 ms before and after, p95 7.5 ms → 8.4 ms — and the occasional long frame on a
+first scroll through the page is first-paint rasterisation of the large SVGs and the
+60-row ledger, present with the libraries removed too.
 
 **The LLM adapter** is provider-swappable by design. The agent never calls an SDK
 directly; it calls one interface:
